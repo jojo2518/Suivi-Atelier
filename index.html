@@ -80,11 +80,22 @@
         
         .logo-box { 
             background: #f8fafc; 
-            padding: 25px; 
+            padding: 20px; 
             border-radius: 12px; 
             margin: 20px 0; 
             border: 2px dashed #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
         }
+        .logo-box img {
+            max-width: 90%;
+            max-height: 90px;
+            object-fit: contain;
+            display: block;
+        }
+        
         .hint { color: #64748b; font-size: 14px; margin-top: 15px; font-weight: 500; }
         
         .btn-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 20px; }
@@ -217,7 +228,7 @@
         <div id="screen-welcome" onclick="goToOperators()">
             <h2>Suivi de Production</h2>
             <div class="logo-box">
-                <img src="logo.png" alt="Logo Entreprise" style="max-width: 100%; max-height: 80px; display: block; margin: 0 auto;">
+                <img src="logo.png" alt="Logo Entreprise">
             </div>
             <p class="hint">Cliquez sur le logo pour démarrer</p>
         </div>
@@ -528,7 +539,7 @@
         let timeStartFilling = null;
         let timeStopFilling = null;
         let timeEndCarton = null;
-        let lastOperatorEndTime = {}; // Mémorise la dernière fin d'OF de chaque opérateur pour son SMED personnel
+        let lastOperatorEndTime = JSON.parse(localStorage.getItem('atelier_last_op_ends') || '{}');
 
         function updateClock() {
             const now = new Date();
@@ -680,7 +691,7 @@
             const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
             let todayName = daysMap[new Date().getDay()];
             let dayConfig = schedule.find(s => s.day === todayName);
-            return dayConfig ? timeToMinutes(dayConfig.start) : (8 * 60 + 30); // 08:30 par défaut
+            return dayConfig ? timeToMinutes(dayConfig.start) : (8 * 60 + 30);
         }
 
         function confirmResetDatabase() {
@@ -931,21 +942,21 @@
             const fillingMin = Math.round((timeStopFilling - (timeStartFilling || timeStopFilling)) / 60000);
             const cartonMin = Math.round((timeEndCarton - timeStopFilling) / 60000);
 
-            // Calcul fin du SMED centré sur l'opérateur (ou sur l'ouverture de l'atelier si premier OF de la journée)
+            // Calcul du SMED centré sur l'opérateur principal connecté
             let smedMin = 0;
             let startTimeMin = (timeStartFilling || new Date()).getHours() * 60 + (timeStartFilling || new Date()).getMinutes();
 
             if (lastOperatorEndTime[currentOperator]) {
-                // S'il y a un OF précédent fait par cet opérateur aujourd'hui, on calcule l'écart personnel
-                smedMin = Math.round(((timeStartFilling || new Date()) - lastOperatorEndTime[currentOperator]) / 60000);
+                let lastEnd = new Date(lastOperatorEndTime[currentOperator]);
+                smedMin = Math.round(((timeStartFilling || new Date()) - lastEnd) / 60000);
             } else {
-                // Premier OF de la journée pour cet opérateur : écart par rapport à l'ouverture de l'atelier (ex: 8h30)
                 let workshopStartMin = getWorkshopStartMinutesToday();
                 smedMin = startTimeMin - workshopStartMin;
             }
             if (smedMin < 0) smedMin = 0;
 
-            lastOperatorEndTime[currentOperator] = timeEndCarton;
+            lastOperatorEndTime[currentOperator] = timeEndCarton.toISOString();
+            localStorage.setItem('atelier_last_op_ends', JSON.stringify(lastOperatorEndTime));
 
             let teamStr = getSelectedTeamString();
             let todayDateStr = new Date().toISOString().split('T')[0];
