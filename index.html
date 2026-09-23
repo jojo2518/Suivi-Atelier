@@ -7,7 +7,7 @@
     <!-- Intégration de la bibliothèque de scan de code-barres -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     
-    <!-- SDK Firebase & Exposition Globale (Chemin pair validé) -->
+    <!-- SDK Firebase & Exposition Globale -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
@@ -24,7 +24,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Chemins valides à 4 segments pairs : collection / doc / collection / doc
+        // Chemins valides à 4 segments pairs : atelier_root / donnees / [colName] / [docId]
         window.FB_db = db;
         window.FB_getDocRef = (colName, docId) => doc(db, "atelier_root", "donnees", colName, docId);
         window.FB_getDoc = getDoc;
@@ -391,8 +391,8 @@
         <div class="modal-box">
             <h3>Bilan de Fin d'OF</h3>
             <div class="form-group"><label>Flacons conformes produits :</label><input type="number" id="closing-good" class="app-input" value="500"></div>
-            <div class="form-group"><label>Rebuts bouteilles :</label><input type="number" id="closing-waste-bt" class="app-input" value="0"></div>
-            <div class="form-group"><label>Rebuts bouchons :</label><input type="number" id="closing-waste-cap" class="app-input" value="0"></div>
+            <div class="form-group"><label>🍾 Rebuts bouteilles :</label><input type="number" id="closing-waste-bt" class="app-input" value="0"></div>
+            <div class="form-group"><label>🟢 Rebuts bouchons :</label><input type="number" id="closing-waste-cap" class="app-input" value="0"></div>
             <button class="app-btn machine" style="width: 100%; margin-top: 10px;" onclick="validateAndCloseOF()">Enregistrer & Clôturer</button>
         </div>
     </div>
@@ -660,7 +660,7 @@
                 carton: cartonMin + "m",
                 smed: smedMin + "m",
                 smedValueMinutes: smedMin,
-                stats: `<strong>${good}</strong> / ${targetQty}<br><span style="font-size:11px; color:#475569;">Bte: ${wasteBt} | Bch: ${wasteCap}</span>`,
+                stats: `<strong>${good}</strong> / ${targetQty}<br><span style="font-size:11px; color:#475569;">🍾 Bte: ${wasteBt} | 🟢 Bch: ${wasteCap}</span>`,
                 goodQty: parseInt(good),
                 targetQty: parseInt(targetQty)
             };
