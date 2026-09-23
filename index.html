@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi d'Atelier - Production Cloud Corrigé</title>
+    <title>Suivi d'Atelier - Production Cloud Définitif</title>
     <!-- Intégration de la bibliothèque de scan de code-barres -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     
-    <!-- SDK Firebase avec vos identifiants intégrés -->
+    <!-- SDK Firebase & Exposition Globale -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
@@ -24,9 +24,11 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Exposition globale sécurisée (chemin pair: collection/document)
+        // Exposition globale sécurisée (chemin pair valide: collection/document)
         window.FB_db = db;
         window.FB_getDocRef = (colName, docId) => doc(db, "atelier_root", "donnees", colName, docId);
+        window.FB_getDoc = getDoc;
+        window.FB_setDoc = setDoc;
     </script>
 
     <style>
@@ -664,10 +666,10 @@
             };
 
             let historyRef = window.FB_getDocRef("atelier_history", currentMachine);
-            let snap = await getDoc(historyRef);
+            let snap = await window.FB_getDoc(historyRef);
             let records = snap.exists() ? (snap.data().records || []) : [];
             records.push(newRecord);
-            await setDoc(historyRef, { records: records });
+            await window.FB_setDoc(historyRef, { records: records });
 
             await saveMachineStatusCloud(currentMachine, { status: 'stop', statusText: "À l'arrêt / Disponible", of: "-", team: "-", timeStart: "-" });
 
@@ -679,7 +681,7 @@
         async function renderHistory() {
             const tbody = document.getElementById('history-tbody');
             try {
-                let snap = await getDoc(window.FB_getDocRef("atelier_history", currentMachine));
+                let snap = await window.FB_getDoc(window.FB_getDocRef("atelier_history", currentMachine));
                 let historyData = (snap.exists() && snap.data().records) ? snap.data().records : [];
                 
                 if (historyData.length === 0) {
@@ -700,17 +702,17 @@
 
         async function saveMachineStatusCloud(machName, statusObj) {
             try {
-                await setDoc(window.FB_getDocRef("atelier_status", machName), statusObj);
+                await window.FB_setDoc(window.FB_getDocRef("atelier_status", machName), statusObj);
             } catch(e) { console.error(e); }
         }
 
         async function updateMachineStatusFieldCloud(machName, fieldsToUpdate) {
             try {
                 let docRef = window.FB_getDocRef("atelier_status", machName);
-                let snap = await getDoc(docRef);
+                let snap = await window.FB_getDoc(docRef);
                 let current = snap.exists() ? snap.data() : {};
                 let updated = Object.assign({}, current, fieldsToUpdate);
-                await setDoc(docRef, updated);
+                await window.FB_setDoc(docRef, updated);
             } catch(e) { console.error(e); }
         }
 
@@ -748,7 +750,7 @@
             try {
                 container.innerHTML = '';
                 for (let mach of MACHINES_LIST) {
-                    let snap = await getDoc(window.FB_getDocRef("atelier_status", mach));
+                    let snap = await window.FB_getDoc(window.FB_getDocRef("atelier_status", mach));
                     let st = snap.exists() ? snap.data() : null;
                     let cardClass = "status-stop";
                     let statusText = "À l'arrêt / Disponible";
@@ -802,7 +804,7 @@
             try {
                 for (let mach of MACHINES_LIST) {
                     if (!activeMachines.includes(mach)) continue;
-                    let snap = await getDoc(window.FB_getDocRef("atelier_history", mach));
+                    let snap = await window.FB_getDoc(window.FB_getDocRef("atelier_history", mach));
                     let machData = (snap.exists() && snap.data().records) ? snap.data().records : [];
                     machData.forEach(item => { item.machineName = mach; allRecords.push(item); });
                 }
@@ -849,12 +851,12 @@
             try {
                 if (perimeter === 'general' || perimeter === 'atelier') {
                     for (let mach of MACHINES_LIST) {
-                        let snap = await getDoc(window.FB_getDocRef("atelier_history", mach));
+                        let snap = await window.FB_getDoc(window.FB_getDocRef("atelier_history", mach));
                         if(snap.exists() && snap.data().records) records = records.concat(snap.data().records);
                     }
                 } else if (perimeter.startsWith('machine_')) {
                     let machName = perimeter.replace('machine_', '');
-                    let snap = await getDoc(window.FB_getDocRef("atelier_history", machName));
+                    let snap = await window.FB_getDoc(window.FB_getDocRef("atelier_history", machName));
                     if(snap.exists() && snap.data().records) records = snap.data().records;
                 }
 
