@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suivi d'Atelier - Production</title>
+    <!-- Intégration de la bibliothèque de scan de code-barres -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -142,6 +144,17 @@
             cursor: pointer;
         }
         .icon-btn:hover { background-color: #27ae60; }
+
+        .scan-camera-btn {
+            background-color: #8e44ad;
+            color: white;
+            border: none;
+            padding: 0 16px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .scan-camera-btn:hover { background-color: #732d91; }
         
         .hidden { display: none !important; }
         .back-link {
@@ -334,7 +347,7 @@
             font-weight: normal;
         }
 
-        /* Styles spécifiques onglet Statistiques avancées */
+        /* Styles améliorés pour l'onglet Statistiques */
         .stats-container {
             text-align: left;
             max-height: 420px;
@@ -347,7 +360,7 @@
             gap: 8px;
             background: #f8fafc;
             border: 1px solid #cbd5e1;
-            padding: 10px;
+            padding: 12px;
             border-radius: 8px;
             margin-bottom: 12px;
         }
@@ -365,12 +378,13 @@
         .period-btn {
             background: #e2e8f0;
             border: none;
-            padding: 5px 10px;
-            font-size: 11px;
+            padding: 6px 12px;
+            font-size: 12px;
             font-weight: 600;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             color: #475569;
+            transition: background 0.2s;
         }
         .period-btn.active {
             background: #3498db;
@@ -379,42 +393,70 @@
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 15px;
         }
         .kpi-card {
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-top: 4px solid #3498db;
             border-radius: 8px;
-            padding: 12px;
+            padding: 14px;
             text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
         .kpi-card.highlight {
-            background: #e8f8f5;
-            border-color: #2ecc71;
+            border-top-color: #2ecc71;
+            background: #f4faf8;
         }
         .kpi-value {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
-            color: #2c3e50;
-            margin-top: 4px;
+            color: #1e293b;
+            margin-top: 6px;
         }
         .kpi-label {
-            font-size: 12px;
+            font-size: 11px;
             color: #64748b;
-            font-weight: 600;
+            font-weight: 700;
+            text-transform: uppercase;
         }
         .pareto-box {
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 12px;
+            padding: 14px;
             margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
         .pareto-box h4 {
-            font-size: 13px;
-            color: #2c3e50;
+            font-size: 14px;
+            color: #1e293b;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 6px;
+        }
+        .pareto-item {
             margin-bottom: 8px;
+        }
+        .pareto-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 3px;
+        }
+        .pareto-bar-bg {
+            background: #f1f5f9;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .pareto-bar-fill {
+            background: #e74c3c;
+            height: 100%;
+            border-radius: 4px;
         }
 
         .modal-overlay {
@@ -600,9 +642,9 @@
                                 <button class="period-btn" onclick="setStatsPeriod('year', this)">Année</button>
                             </div>
                         </div>
-                        <div class="stats-toolbar-row" style="border-top: 1px solid #e2e8f0; padding-top: 6px;">
+                        <div class="stats-toolbar-row" style="border-top: 1px solid #e2e8f0; padding-top: 8px;">
                             <div style="font-size: 13px; font-weight: 600; color: #2c3e50;">🎯 Périmètre :</div>
-                            <select id="stats-perimeter-select" onchange="renderStatistics()" style="padding: 4px; font-size: 12px; border-radius: 4px; border: 1px solid #cbd5e1; flex: 1; max-width: 220px;">
+                            <select id="stats-perimeter-select" onchange="renderStatistics()" style="padding: 6px; font-size: 12px; border-radius: 6px; border: 1px solid #cbd5e1; flex: 1; max-width: 220px;">
                                 <option value="general">Général (Usine)</option>
                                 <option value="atelier">Atelier Global</option>
                                 <optgroup label="Par Machine" id="stats-machines-options">
@@ -615,19 +657,19 @@
                     <!-- Carrés KPI : TRG, TRS et Indicateurs -->
                     <div class="kpi-grid">
                         <div class="kpi-card highlight">
-                            <div class="kpi-label">TRS (Taux de Rend. Synthétique)</div>
+                            <div class="kpi-label">TRS (Rend. Synthétique)</div>
                             <div class="kpi-value" id="kpi-trs">78.4%</div>
                         </div>
                         <div class="kpi-card highlight">
-                            <div class="kpi-label">TRG (Taux de Rend. Global)</div>
+                            <div class="kpi-label">TRG (Rend. Global)</div>
                             <div class="kpi-value" id="kpi-trg">65.2%</div>
                         </div>
                         <div class="kpi-card">
-                            <div class="kpi-label">Disponibilité Opérationnelle</div>
+                            <div class="kpi-label">Disponibilité</div>
                             <div class="kpi-value" id="kpi-disp">85.0%</div>
                         </div>
                         <div class="kpi-card">
-                            <div class="kpi-label">Taux de Qualité</div>
+                            <div class="kpi-label">Qualité</div>
                             <div class="kpi-value" id="kpi-qual">98.5%</div>
                         </div>
                     </div>
@@ -635,21 +677,38 @@
                     <!-- Pareto des Pertes -->
                     <div class="pareto-box">
                         <h4>📉 Pareto des Pertes de Cadence & Rebuts</h4>
-                        <div style="font-size: 12px; color: #475569;" id="pareto-losses-content">
-                            • Micro-arrêts bouteilles : 42%<br>
-                            • Ajustement étiqueteuse : 28%<br>
-                            • Approvisionnement bouchons : 18%<br>
-                            • Autres : 12%
+                        <div class="pareto-item">
+                            <div class="pareto-info"><span>Micro-arrêts bouteilles</span><span>42%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 42%;"></div></div>
+                        </div>
+                        <div class="pareto-item" style="margin-top: 8px;">
+                            <div class="pareto-info"><span>Ajustement étiqueteuse</span><span>28%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 28%;"></div></div>
+                        </div>
+                        <div class="pareto-item" style="margin-top: 8px;">
+                            <div class="pareto-info"><span>Approvisionnement bouchons</span><span>18%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 18%;"></div></div>
+                        </div>
+                        <div class="pareto-item" style="margin-top: 8px;">
+                            <div class="pareto-info"><span>Autres</span><span>12%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 12%; background: #95a5a6;"></div></div>
                         </div>
                     </div>
 
                     <!-- Pareto des Arrêts -->
                     <div class="pareto-box">
                         <h4>🛑 Pareto des Motifs d'Arrêts</h4>
-                        <div style="font-size: 12px; color: #475569;" id="pareto-stops-content">
-                            • Casse / réglage étiquette : 50%<br>
-                            • Bloquage bouteille / bouchons : 30%<br>
-                            • Réglage mécanique : 20%
+                        <div class="pareto-item">
+                            <div class="pareto-info"><span>Casse / réglage étiquette</span><span>50%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 50%;"></div></div>
+                        </div>
+                        <div class="pareto-item" style="margin-top: 8px;">
+                            <div class="pareto-info"><span>Bloquage bouteille / bouchons</span><span>30%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 30%;"></div></div>
+                        </div>
+                        <div class="pareto-item" style="margin-top: 8px;">
+                            <div class="pareto-info"><span>Réglage mécanique</span><span>20%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 20%;"></div></div>
                         </div>
                     </div>
                 </div>
@@ -666,8 +725,15 @@
                 <label for="of-input">Numéro d'OF :</label>
                 <div class="input-row">
                     <input type="text" id="of-input" class="app-input" placeholder="Ex: OF-2026-894">
+                    <button class="scan-camera-btn" onclick="openBarcodeScanner()" title="Scanner avec la caméra">📷</button>
                     <button class="icon-btn" onclick="validateOF()">✓</button>
                 </div>
+            </div>
+
+            <!-- Zone d'affichage du scanner caméra -->
+            <div id="scanner-container" class="hidden" style="margin-bottom: 15px; background: #000; border-radius: 8px; overflow: hidden; padding: 5px;">
+                <div id="reader" style="width: 100%;"></div>
+                <button class="app-btn" style="background: #e74c3c; margin-top: 8px; padding: 8px; font-size: 14px;" onclick="closeBarcodeScanner()">Fermer la caméra</button>
             </div>
 
             <div class="form-group" id="qty-container" style="display: none;">
@@ -830,6 +896,7 @@
         let targetQty = 0;
         let isPaused = false;
         let currentStatsPeriod = 'day';
+        let html5QrCode = null;
 
         let timeStartFilling = null;
         let timeStopFilling = null;
@@ -844,6 +911,10 @@
         updateClock();
 
         function showScreen(screenId) {
+            // Arrêter la caméra si on quitte l'écran de travail
+            if (screenId !== 'screen-workspace' && html5QrCode) {
+                closeBarcodeScanner();
+            }
             ['screen-welcome', 'screen-operator', 'screen-machine', 'screen-service', 'screen-workspace', 'screen-running'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
@@ -908,9 +979,46 @@
             showScreen('screen-workspace');
         }
 
+        // --- GESTION DU SCANNER DE CODE-BARRES ---
+        function openBarcodeScanner() {
+            document.getElementById('scanner-container').classList.remove('hidden');
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 100 } },
+                (decodedText, decodedResult) => {
+                    // Succès du scan
+                    document.getElementById('of-input').value = decodedText;
+                    closeBarcodeScanner();
+                    validateOF();
+                },
+                (errorMessage) => {
+                    // Erreurs de scan en direct (ignorées pour éviter de polluer)
+                }
+            ).catch((err) => {
+                alert("Impossible d'accéder à la caméra : " + err);
+                closeBarcodeScanner();
+            });
+        }
+
+        function closeBarcodeScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('scanner-container').classList.add('hidden');
+                }).catch(err => {
+                    document.getElementById('scanner-container').classList.add('hidden');
+                });
+            } else {
+                document.getElementById('scanner-container').classList.add('hidden');
+            }
+        }
+        // ----------------------------------------
+
         function validateOF() {
             const ofVal = document.getElementById('of-input').value.trim();
-            if (ofVal === "") { alert("Veuillez saisir un numéro d'OF."); return; }
+            if (ofVal === "") { alert("Veuillez saisir ou scanner un numéro d'OF."); return; }
             currentOF = ofVal;
             
             document.getElementById('qty-container').style.display = 'block';
@@ -1248,7 +1356,6 @@
         function renderStatistics() {
             const perimeter = document.getElementById('stats-perimeter-select').value;
             
-            // Simulation dynamique de variation selon la période et le périmètre pour rendre l'interface vivante
             let modifier = 1.0;
             if (currentStatsPeriod === 'week') modifier = 1.02;
             if (currentStatsPeriod === 'month') modifier = 0.98;
