@@ -7,7 +7,7 @@
     <!-- Intégration de la bibliothèque de scan de code-barres -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     
-    <!-- SDK Firebase & Exposition Globale (Chemin pair 2 segments validé) -->
+    <!-- SDK Firebase & Exposition Globale (Chemin pair validé) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
@@ -24,9 +24,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Correction : 2 segments pairs (colName / docId) pour respecter Firestore
+        // Chemins valides à 4 segments pairs : collection / doc / collection / doc
         window.FB_db = db;
-        window.FB_getDocRef = (colName, docId) => doc(db, colName, docId);
+        window.FB_getDocRef = (colName, docId) => doc(db, "atelier_root", "donnees", colName, docId);
         window.FB_getDoc = getDoc;
         window.FB_setDoc = setDoc;
     </script>
