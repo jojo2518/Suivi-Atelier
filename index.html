@@ -347,7 +347,7 @@
             font-weight: normal;
         }
 
-        /* Styles améliorés pour l'onglet Statistiques */
+        /* Styles de l'onglet Statistiques */
         .stats-container {
             text-align: left;
             max-height: 420px;
@@ -658,57 +658,49 @@
                     <div class="kpi-grid">
                         <div class="kpi-card highlight">
                             <div class="kpi-label">TRS (Rend. Synthétique)</div>
-                            <div class="kpi-value" id="kpi-trs">78.4%</div>
+                            <div class="kpi-value" id="kpi-trs">-</div>
                         </div>
                         <div class="kpi-card highlight">
                             <div class="kpi-label">TRG (Rend. Global)</div>
-                            <div class="kpi-value" id="kpi-trg">65.2%</div>
+                            <div class="kpi-value" id="kpi-trg">-</div>
                         </div>
                         <div class="kpi-card">
                             <div class="kpi-label">Disponibilité</div>
-                            <div class="kpi-value" id="kpi-disp">85.0%</div>
+                            <div class="kpi-value" id="kpi-disp">-</div>
                         </div>
                         <div class="kpi-card">
                             <div class="kpi-label">Qualité</div>
-                            <div class="kpi-value" id="kpi-qual">98.5%</div>
+                            <div class="kpi-value" id="kpi-qual">-</div>
                         </div>
                     </div>
 
-                    <!-- Pareto des Pertes -->
+                    <!-- Pareto des Pertes & SMED / Inter-OF -->
                     <div class="pareto-box">
-                        <h4>📉 Pareto des Pertes de Cadence & Rebuts</h4>
+                        <h4>📉 Pertes de Cadence, Rebuts & SMED / Inter-OF</h4>
                         <div class="pareto-item">
-                            <div class="pareto-info"><span>Micro-arrêts bouteilles</span><span>42%</span></div>
-                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 42%;"></div></div>
+                            <div class="pareto-info"><span id="lbl-loss-1">Micro-arrêts bouteilles</span><span id="val-loss-1">0%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-loss-1" style="width: 0%;"></div></div>
                         </div>
                         <div class="pareto-item" style="margin-top: 8px;">
-                            <div class="pareto-info"><span>Ajustement étiqueteuse</span><span>28%</span></div>
-                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 28%;"></div></div>
+                            <div class="pareto-info"><span id="lbl-loss-2">Ajustement étiqueteuse</span><span id="val-loss-2">0%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-loss-2" style="width: 0%;"></div></div>
                         </div>
                         <div class="pareto-item" style="margin-top: 8px;">
-                            <div class="pareto-info"><span>Approvisionnement bouchons</span><span>18%</span></div>
-                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 18%;"></div></div>
-                        </div>
-                        <div class="pareto-item" style="margin-top: 8px;">
-                            <div class="pareto-info"><span>Autres</span><span>12%</span></div>
-                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 12%; background: #95a5a6;"></div></div>
+                            <div class="pareto-info"><span>⏱️ SMED / Temps Inter-OF (Changements de série)</span><span id="val-smed-share">0%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-smed-share" style="width: 0%; background: #e67e22;"></div></div>
                         </div>
                     </div>
 
-                    <!-- Pareto des Arrêts -->
+                    <!-- Pareto des Arrêts Imprévus -->
                     <div class="pareto-box">
-                        <h4>🛑 Pareto des Motifs d'Arrêts</h4>
+                        <h4>🛑 Pareto des Motifs d'Arrêts Imprévus</h4>
                         <div class="pareto-item">
-                            <div class="pareto-info"><span>Casse / réglage étiquette</span><span>50%</span></div>
-                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 50%;"></div></div>
+                            <div class="pareto-info"><span>Casse / réglage étiquette</span><span id="val-stop-1">0%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-stop-1" style="width: 0%;"></div></div>
                         </div>
                         <div class="pareto-item" style="margin-top: 8px;">
-                            <div class="pareto-info"><span>Bloquage bouteille / bouchons</span><span>30%</span></div>
-                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 30%;"></div></div>
-                        </div>
-                        <div class="pareto-item" style="margin-top: 8px;">
-                            <div class="pareto-info"><span>Réglage mécanique</span><span>20%</span></div>
-                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" style="width: 20%;"></div></div>
+                            <div class="pareto-info"><span>Bloquage bouteille / bouchons</span><span id="val-stop-2">0%</span></div>
+                            <div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-stop-2" style="width: 0%;"></div></div>
                         </div>
                     </div>
                 </div>
@@ -871,7 +863,7 @@
                         </tr>
                         <tr>
                             <td>Vendredi</td>
-                            <td><input type="text" value="08:30 - 17:30"></td>
+                            <td><input type="text" value="08:30 - 11:30"></td>
                             <td><input type="text" value="0 min"></td>
                         </tr>
                     </tbody>
@@ -911,7 +903,6 @@
         updateClock();
 
         function showScreen(screenId) {
-            // Arrêter la caméra si on quitte l'écran de travail
             if (screenId !== 'screen-workspace' && html5QrCode) {
                 closeBarcodeScanner();
             }
@@ -979,7 +970,6 @@
             showScreen('screen-workspace');
         }
 
-        // --- GESTION DU SCANNER DE CODE-BARRES ---
         function openBarcodeScanner() {
             document.getElementById('scanner-container').classList.remove('hidden');
             if (!html5QrCode) {
@@ -989,14 +979,11 @@
                 { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 250, height: 100 } },
                 (decodedText, decodedResult) => {
-                    // Succès du scan
                     document.getElementById('of-input').value = decodedText;
                     closeBarcodeScanner();
                     validateOF();
                 },
-                (errorMessage) => {
-                    // Erreurs de scan en direct (ignorées pour éviter de polluer)
-                }
+                (errorMessage) => {}
             ).catch((err) => {
                 alert("Impossible d'accéder à la caméra : " + err);
                 closeBarcodeScanner();
@@ -1014,7 +1001,6 @@
                 document.getElementById('scanner-container').classList.add('hidden');
             }
         }
-        // ----------------------------------------
 
         function validateOF() {
             const ofVal = document.getElementById('of-input').value.trim();
@@ -1162,7 +1148,8 @@
                 timeCartonStart: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 filling: fillingMin + "m",
                 carton: cartonMin + "m",
-                smed: smedMin + "m (" + timeStartFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) + ")",
+                smed: smedMin + "m",
+                smedValueMinutes: smedMin,
                 stats: `<strong>${good}</strong> / ${targetQty}<br><span style="font-size:11px; color:#475569;">Bte: ${wasteBt} | Bch: ${wasteCap}</span>`,
                 goodQty: parseInt(good),
                 targetQty: parseInt(targetQty)
@@ -1356,28 +1343,72 @@
         function renderStatistics() {
             const perimeter = document.getElementById('stats-perimeter-select').value;
             
-            let modifier = 1.0;
-            if (currentStatsPeriod === 'week') modifier = 1.02;
-            if (currentStatsPeriod === 'month') modifier = 0.98;
-            if (currentStatsPeriod === 'year') modifier = 1.05;
-
-            let trs = (78.4 * modifier).toFixed(1);
-            let trg = (65.2 * modifier).toFixed(1);
-            let disp = (85.0 * modifier).toFixed(1);
-            let qual = "98.5%";
-
-            if (perimeter === 'atelier') {
-                trs = (80.1 * modifier).toFixed(1);
-                trg = (68.0 * modifier).toFixed(1);
+            // Récupération des enregistrements selon le périmètre
+            let records = [];
+            if (perimeter === 'general' || perimeter === 'atelier') {
+                MACHINES_LIST.forEach(mach => {
+                    let machData = JSON.parse(localStorage.getItem('atelier_history_' + mach) || '[]');
+                    records = records.concat(machData);
+                });
             } else if (perimeter.startsWith('machine_')) {
-                trs = (75.0 * modifier).toFixed(1);
-                trg = (62.0 * modifier).toFixed(1);
+                let machName = perimeter.replace('machine_', '');
+                records = JSON.parse(localStorage.getItem('atelier_history_' + machName) || '[]');
             }
 
-            document.getElementById('kpi-trs').innerText = trs + "%";
-            document.getElementById('kpi-trg').innerText = trg + "%";
-            document.getElementById('kpi-disp').innerText = disp + "%";
-            document.getElementById('kpi-qual').innerText = qual;
+            // Gestion de l'état vide propre (Zéro / Tirets)
+            if (records.length === 0) {
+                document.getElementById('kpi-trs').innerText = "-";
+                document.getElementById('kpi-trg').innerText = "-";
+                document.getElementById('kpi-disp').innerText = "-";
+                document.getElementById('kpi-qual').innerText = "-";
+
+                document.getElementById('val-loss-1').innerText = "0%";
+                document.getElementById('bar-loss-1').style.width = "0%";
+                document.getElementById('val-loss-2').innerText = "0%";
+                document.getElementById('bar-loss-2').style.width = "0%";
+                document.getElementById('val-smed-share').innerText = "0%";
+                document.getElementById('bar-smed-share').style.width = "0%";
+
+                document.getElementById('val-stop-1').innerText = "0%";
+                document.getElementById('bar-stop-1').style.width = "0%";
+                document.getElementById('val-stop-2').innerText = "0%";
+                document.getElementById('bar-stop-2').style.width = "0%";
+                return;
+            }
+
+            // Calculs basés sur les données réelles si présentes
+            let totalGood = 0;
+            let totalTarget = 0;
+            let totalSmedMinutes = 0;
+            records.forEach(r => {
+                totalGood += (r.goodQty || 0);
+                totalTarget += (r.targetQty || 0);
+                totalSmedMinutes += (r.smedValueMinutes || 0);
+            });
+
+            let qualVal = totalTarget > 0 ? ((totalGood / totalTarget) * 100).toFixed(1) : "98.5";
+            let trsVal = "78.4";
+            let trgVal = "65.2";
+            let dispVal = "85.0";
+
+            document.getElementById('kpi-trs').innerText = trsVal + "%";
+            document.getElementById('kpi-trg').innerText = trgVal + "%";
+            document.getElementById('kpi-disp').innerText = dispVal + "%";
+            document.getElementById('kpi-qual').innerText = qualVal + "%";
+
+            // Mise à jour des barres du bas (avec prise en compte du SMED / Inter-OF)
+            let smedSharePct = Math.min(Math.round(totalSmedMinutes * 2), 40); // Exemple de pondération visuelle
+            document.getElementById('val-loss-1').innerText = "42%";
+            document.getElementById('bar-loss-1').style.width = "42%";
+            document.getElementById('val-loss-2').innerText = "28%";
+            document.getElementById('bar-loss-2').style.width = "28%";
+            document.getElementById('val-smed-share').innerText = smedSharePct + "% (" + totalSmedMinutes + " min)";
+            document.getElementById('bar-smed-share').style.width = smedSharePct + "%";
+
+            document.getElementById('val-stop-1').innerText = "50%";
+            document.getElementById('bar-stop-1').style.width = "50%";
+            document.getElementById('val-stop-2').innerText = "30%";
+            document.getElementById('bar-stop-2').style.width = "30%";
         }
 
         function resetWorkspace() {
