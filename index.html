@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi d'Atelier - Production Locale</title>
-    <!-- Intégration de la bibliothèque de scan de code-barres -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <title>Suivi d'Atelier - Production</title>
     
     <style>
         * {
@@ -15,151 +13,180 @@
             padding: 0;
         }
         body {
-            background-color: #f4f6f9;
+            background: linear-gradient(135deg, #334155 1%, #1e293b 100%);
             color: #333;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             position: relative;
+            padding: 20px;
         }
         #top-right-icons {
             position: absolute;
-            top: 15px;
-            right: 20px;
+            top: 20px;
+            right: 25px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            z-index: 10;
         }
         #live-clock {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
-            color: #7f8c8d;
-            background: white;
-            padding: 6px 12px;
+            color: #f1f5f9;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
             border-radius: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .icon-top-btn {
-            background: white;
-            border: none;
-            font-size: 18px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            font-size: 16px;
             cursor: pointer;
-            padding: 6px 10px;
+            padding: 6px 12px;
             border-radius: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            transition: background 0.2s;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s;
         }
-        .icon-top-btn:hover { background: #e2e8f0; }
+        .icon-top-btn:hover { background: rgba(255, 255, 255, 0.25); }
+        
         .container {
             width: 100%;
             max-width: 680px;
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
             text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
-        h2 { margin-bottom: 20px; color: #2c3e50; }
-        #screen-welcome { cursor: pointer; }
-        .logo-box { background: #ffffff; padding: 20px; border-radius: 10px; margin: 20px 0; }
-        .hint { color: #7f8c8d; font-size: 14px; margin-top: 15px; }
+        h2 { margin-bottom: 20px; color: #1e293b; font-weight: 700; letter-spacing: -0.5px; }
+        
+        #screen-welcome { 
+            cursor: pointer; 
+            padding: 10px;
+            transition: transform 0.2s;
+        }
+        #screen-welcome:hover {
+            transform: translateY(-2px);
+        }
+        
+        .logo-box { 
+            background: #f8fafc; 
+            padding: 25px; 
+            border-radius: 12px; 
+            margin: 20px 0; 
+            border: 2px dashed #cbd5e1;
+        }
+        .hint { color: #64748b; font-size: 14px; margin-top: 15px; font-weight: 500; }
+        
         .btn-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 20px; }
         .app-btn {
-            background-color: #3498db; color: white; border: none; padding: 16px;
-            font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: background-color 0.2s;
+            background-color: #3b82f6; color: white; border: none; padding: 16px;
+            font-size: 16px; font-weight: 600; border-radius: 10px; cursor: pointer; transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
         }
-        .app-btn:hover { background-color: #2980b9; }
-        .app-btn.machine { background-color: #2ecc71; }
-        .app-btn.machine:hover { background-color: #27ae60; }
-        .app-btn.service-btn { background-color: #e67e22; }
-        .app-btn.service-btn:hover { background-color: #d35400; }
-        .app-btn.start { background-color: #27ae60; font-size: 20px; padding: 18px; margin-top: 15px; }
-        .app-btn.start:hover { background-color: #219653; }
+        .app-btn:hover { background-color: #2563eb; transform: translateY(-1px); }
+        .app-btn.machine { background-color: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); }
+        .app-btn.machine:hover { background-color: #059669; }
+        .app-btn.service-btn { background-color: #f59e0b; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3); }
+        .app-btn.service-btn:hover { background-color: #d97706; }
+        .app-btn.start { background-color: #10b981; font-size: 20px; padding: 18px; margin-top: 15px; }
+        .app-btn.start:hover { background-color: #059669; }
         
         .form-group { margin-bottom: 20px; text-align: left; }
-        .form-group label { display: block; font-weight: 600; margin-bottom: 8px; color: #34495e; font-size: 14px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 8px; color: #334155; font-size: 14px; }
         .input-row { display: flex; gap: 10px; }
-        .app-input { flex: 1; padding: 14px; font-size: 16px; border: 2px solid #cbd5e1; border-radius: 8px; outline: none; }
-        .app-input:focus { border-color: #3498db; }
+        .app-input { flex: 1; padding: 14px; font-size: 16px; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; background: #f8fafc; transition: border-color 0.2s; }
+        .app-input:focus { border-color: #3b82f6; background: #fff; }
         
-        .icon-btn { background-color: #2ecc71; color: white; border: none; padding: 0 20px; font-size: 20px; border-radius: 8px; cursor: pointer; }
-        .icon-btn:hover { background-color: #27ae60; }
-        .scan-camera-btn { background-color: #8e44ad; color: white; border: none; padding: 0 16px; font-size: 18px; border-radius: 8px; cursor: pointer; }
-        .scan-camera-btn:hover { background-color: #732d91; }
+        .icon-btn { background-color: #10b981; color: white; border: none; padding: 0 25px; font-size: 20px; border-radius: 10px; cursor: pointer; transition: background 0.2s; }
+        .icon-btn:hover { background-color: #059669; }
         
         .hidden { display: none !important; }
-        .back-link { display: inline-block; margin-top: 20px; color: #7f8c8d; cursor: pointer; text-decoration: underline; font-size: 14px; }
+        .back-link { display: inline-block; margin-top: 20px; color: #64748b; cursor: pointer; text-decoration: underline; font-size: 14px; font-weight: 600; transition: color 0.2s; }
+        .back-link:hover { color: #1e293b; }
         
-        .team-selection-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: left; }
+        .team-selection-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: left; }
         .team-chips-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-        .team-chip { background: #e2e8f0; color: #475569; border: none; padding: 6px 12px; font-size: 13px; font-weight: 600; border-radius: 15px; cursor: pointer; transition: all 0.2s; }
-        .team-chip.selected { background: #3498db; color: white; }
+        .team-chip { background: #e2e8f0; color: #475569; border: none; padding: 6px 14px; font-size: 13px; font-weight: 600; border-radius: 20px; cursor: pointer; transition: all 0.2s; }
+        .team-chip.selected { background: #3b82f6; color: white; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3); }
 
         .service-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
-        .service-tab-btn { flex: 1; padding: 8px 4px; background: #e2e8f0; border: none; font-weight: 600; border-radius: 6px; cursor: pointer; color: #475569; font-size: 12px; }
-        .service-tab-btn.active { background: #e67e22; color: white; }
+        .service-tab-btn { flex: 1; padding: 10px 4px; background: #e2e8f0; border: none; font-weight: 600; border-radius: 8px; cursor: pointer; color: #475569; font-size: 13px; transition: all 0.2s; }
+        .service-tab-btn.active { background: #f59e0b; color: white; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3); }
 
-        .overview-grid { display: grid; grid-template-columns: 1fr; gap: 12px; text-align: left; max-height: 400px; overflow-y: auto; }
-        .machine-card { background: #f8fafc; border-left: 6px solid #cbd5e1; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
-        .machine-card.status-play { border-left-color: #2ecc71; background: #e8f8f5; }
-        .machine-card.status-pause { border-left-color: #f39c12; background: #fef9e7; }
-        .machine-card.status-conditioning { border-left-color: #d35400; background: #fbeee6; }
-        .machine-card.status-stop { border-left-color: #95a5a6; background: #f2f4f4; }
+        .overview-grid { display: grid; grid-template-columns: 1fr; gap: 12px; text-align: left; max-height: 400px; overflow-y: auto; padding-right: 4px; }
+        .machine-card { background: #f8fafc; border-left: 6px solid #cbd5e1; padding: 14px 16px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+        .machine-card.status-play { border-left-color: #10b981; background: #f0fdf4; }
+        .machine-card.status-pause { border-left-color: #f59e0b; background: #fffbeb; }
+        .machine-card.status-conditioning { border-left-color: #d97706; background: #fff7ed; }
+        .machine-card.status-stop { border-left-color: #94a3b8; background: #f8fafc; }
 
-        #running-status { background: #e8f8f5; border: 2px solid #2ecc71; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #117a65; font-weight: 600; }
+        #running-status { background: #f0fdf4; border: 2px solid #10b981; padding: 20px; border-radius: 12px; margin-bottom: 20px; color: #065f46; font-weight: 600; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
         
         .control-buttons-row { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
-        .control-square-btn { width: 70px; height: 70px; border: none; border-radius: 12px; font-size: 28px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .control-square-btn { width: 75px; height: 75px; border: none; border-radius: 14px; font-size: 28px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: transform 0.1s; }
         .control-square-btn:active { transform: scale(0.95); }
-        .btn-play { background-color: #2ecc71; }
-        .btn-pause { background-color: #f39c12; }
-        .btn-stop { background-color: #e74c3c; }
-        .btn-disabled { background-color: #bdc3c7 !important; cursor: not-allowed; opacity: 0.6; }
+        .btn-play { background-color: #10b981; }
+        .btn-pause { background-color: #f59e0b; }
+        .btn-stop { background-color: #ef4444; }
+        .btn-disabled { background-color: #cbd5e1 !important; cursor: not-allowed; opacity: 0.6; box-shadow: none !important; }
 
-        #conditioning-panel { background: #fef9e7; border: 2px solid #f39c12; padding: 20px; border-radius: 10px; margin-top: 20px; text-align: center; }
-        .carton-btn { background-color: #d35400; color: white; border: none; padding: 15px 25px; font-size: 18px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-        .carton-btn:hover { background-color: #ba4a00; }
+        #conditioning-panel { background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; border-radius: 12px; margin-top: 20px; text-align: center; }
+        .carton-btn { background-color: #d97706; color: white; border: none; padding: 15px 25px; font-size: 18px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 15px; box-shadow: 0 4px 10px rgba(217, 119, 6, 0.3); transition: background 0.2s; }
+        .carton-btn:hover { background-color: #b45309; }
 
         .history-section { margin-top: 25px; text-align: left; border-top: 2px solid #e2e8f0; padding-top: 15px; }
-        .history-section h4 { color: #2c3e50; margin-bottom: 10px; font-size: 15px; }
+        .history-section h4 { color: #1e293b; margin-bottom: 10px; font-size: 15px; }
         .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .history-table th, .history-table td { border: 1px solid #cbd5e1; padding: 8px 4px; text-align: center; vertical-align: middle; }
-        .history-table th { background-color: #f1f5f9; color: #334155; }
+        .history-table th, .history-table td { border: 1px solid #cbd5e1; padding: 8px 6px; text-align: center; vertical-align: middle; }
+        .history-table th { background-color: #f1f5f9; color: #334155; font-weight: 600; }
 
-        .filter-panel { background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px; margin-bottom: 12px; text-align: left; font-size: 13px; }
-        .filter-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-        .filter-options label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: normal; }
+        .filter-panel { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 10px; margin-bottom: 12px; text-align: left; font-size: 13px; }
+        .filter-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+        .filter-options label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-weight: normal; color: #334155; }
 
         .stats-container { text-align: left; max-height: 420px; overflow-y: auto; padding-right: 4px; }
-        .stats-toolbar { display: flex; flex-direction: column; gap: 8px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+        .stats-toolbar { display: flex; flex-direction: column; gap: 10px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 14px; border-radius: 10px; margin-bottom: 14px; }
         .stats-toolbar-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
         .stats-period-btns { display: flex; gap: 4px; }
         .period-btn { background: #e2e8f0; border: none; padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; color: #475569; transition: background 0.2s; }
-        .period-btn.active { background: #3498db; color: white; }
-        .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 15px; }
-        .kpi-card { background: #ffffff; border: 1px solid #e2e8f0; border-top: 4px solid #3498db; border-radius: 8px; padding: 14px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .kpi-card.highlight { border-top-color: #2ecc71; background: #f4faf8; }
-        .kpi-value { font-size: 22px; font-weight: bold; color: #1e293b; margin-top: 6px; }
-        .kpi-label { font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; }
-        .pareto-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .period-btn.active { background: #3b82f6; color: white; }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+        .kpi-card { background: #ffffff; border: 1px solid #e2e8f0; border-top: 3px solid #3b82f6; border-radius: 8px; padding: 10px 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .kpi-card.highlight { border-top-color: #10b981; background: #f0fdf4; }
+        .kpi-card.time-card { border-top-color: #d97706; background: #fffbeb; }
+        .kpi-value { font-size: 17px; font-weight: bold; color: #1e293b; margin-top: 4px; }
+        .kpi-label { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; line-height: 1.2; }
+
+        .pareto-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .pareto-box h4 { font-size: 14px; color: #1e293b; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }
         .pareto-item { margin-bottom: 8px; }
         .pareto-info { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 3px; }
         .pareto-bar-bg { background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden; }
-        .pareto-bar-fill { background: #e74c3c; height: 100%; border-radius: 4px; }
+        .pareto-bar-fill { background: #ef4444; height: 100%; border-radius: 4px; }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        .modal-box { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 450px; text-align: left; box-shadow: 0 5px 20px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
-        .modal-box h3 { margin-bottom: 15px; color: #2c3e50; text-align: center; }
-        .motif-option { display: block; width: 100%; padding: 12px; margin-bottom: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; text-align: left; font-size: 15px; cursor: pointer; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 100; }
+        .modal-box { background: white; padding: 25px; border-radius: 16px; width: 92%; max-width: 520px; text-align: left; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
+        .modal-box h3 { margin-bottom: 15px; color: #1e293b; text-align: center; }
+        .motif-option { display: block; width: 100%; padding: 12px; margin-bottom: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; text-align: left; font-size: 15px; cursor: pointer; transition: background 0.2s; font-weight: 500; }
         .motif-option:hover { background: #e2e8f0; }
 
         .schedule-table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px; }
-        .schedule-table th, .schedule-table td { border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-size: 13px; }
-        .schedule-table input { width: 100%; padding: 4px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; }
-        .btn-danger { background-color: #e74c3c; color: white; border: none; padding: 12px; width: 100%; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; }
-        .btn-danger:hover { background-color: #c0392b; }
+        .schedule-table th, .schedule-table td { border: 1px solid #cbd5e1; padding: 5px 4px; text-align: center; font-size: 11px; }
+        .schedule-table th { background: #f1f5f9; font-weight: 600; }
+        .schedule-table input { width: 100%; padding: 3px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; }
+        .btn-danger { background-color: #ef4444; color: white; border: none; padding: 12px; width: 100%; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+        .btn-danger:hover { background-color: #dc2626; }
     </style>
 </head>
 <body>
@@ -227,7 +254,7 @@
                 <div class="filter-panel">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         <strong>🔍 Filtres :</strong>
-                        <div>📅 <input type="date" id="global-date-filter" onchange="renderGlobalHistory()" style="padding: 3px; font-size: 12px; border-radius: 4px; border: 1px solid #cbd5e1;"></div>
+                        <div>📅 <input type="date" id="global-date-filter" onchange="renderGlobalHistory()" style="padding: 4px; font-size: 12px; border-radius: 6px; border: 1px solid #cbd5e1;"></div>
                     </div>
                     <div class="filter-options" id="filter-checkboxes"></div>
                 </div>
@@ -246,7 +273,7 @@
                 <div class="stats-container">
                     <div class="stats-toolbar">
                         <div class="stats-toolbar-row">
-                            <div style="font-size: 13px; font-weight: 600; color: #2c3e50;">📊 Période :</div>
+                            <div style="font-size: 13px; font-weight: 600; color: #1e293b;">📊 Période :</div>
                             <div class="stats-period-btns">
                                 <button class="period-btn active" onclick="setStatsPeriod('day', this)">Jour</button>
                                 <button class="period-btn" onclick="setStatsPeriod('week', this)">Semaine</button>
@@ -255,29 +282,33 @@
                             </div>
                         </div>
                         <div class="stats-toolbar-row" style="border-top: 1px solid #e2e8f0; padding-top: 8px;">
-                            <div style="font-size: 13px; font-weight: 600; color: #2c3e50;">🎯 Périmètre :</div>
+                            <div style="font-size: 13px; font-weight: 600; color: #1e293b;">🎯 Périmètre :</div>
                             <select id="stats-perimeter-select" onchange="renderStatistics()" style="padding: 6px; font-size: 12px; border-radius: 6px; border: 1px solid #cbd5e1; flex: 1; max-width: 220px;">
-                                <option value="general">Général (Usine)</option>
-                                <option value="atelier">Atelier Global</option>
+                                <option value="atelier">Atelier Global (Toutes les machines)</option>
                                 <optgroup label="Par Machine" id="stats-machines-options"></optgroup>
                             </select>
                         </div>
                     </div>
 
+                    <!-- 6 KPIs alignés en 2 lignes de 3 -->
                     <div class="kpi-grid">
-                        <div class="kpi-card highlight"><div class="kpi-label">TRS (Rend. Synthétique)</div><div class="kpi-value" id="kpi-trs">-</div></div>
-                        <div class="kpi-card highlight"><div class="kpi-label">TRG (Rend. Global)</div><div class="kpi-value" id="kpi-trg">-</div></div>
+                        <div class="kpi-card highlight"><div class="kpi-label">TRS</div><div class="kpi-value" id="kpi-trs">-</div></div>
+                        <div class="kpi-card highlight"><div class="kpi-label">TRG</div><div class="kpi-value" id="kpi-trg">-</div></div>
                         <div class="kpi-card"><div class="kpi-label">Disponibilité</div><div class="kpi-value" id="kpi-disp">-</div></div>
                         <div class="kpi-card"><div class="kpi-label">Qualité</div><div class="kpi-value" id="kpi-qual">-</div></div>
+                        <div class="kpi-card time-card"><div class="kpi-label">Temps d'Ouv.</div><div class="kpi-value" id="kpi-open-time">-</div></div>
+                        <div class="kpi-card time-card"><div class="kpi-label">Temps Utile</div><div class="kpi-value" id="kpi-useful-time">-</div></div>
                     </div>
 
+                    <!-- Pertes de cadence : Pourcentage ET Minutes -->
                     <div class="pareto-box">
                         <h4>📉 Pertes de Cadence, Rebuts & SMED / Inter-OF</h4>
-                        <div class="pareto-item"><div class="pareto-info"><span id="lbl-loss-1">Micro-arrêts bouteilles</span><span id="val-loss-1">0%</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-loss-1" style="width: 0%;"></div></div></div>
-                        <div class="pareto-item" style="margin-top: 8px;"><div class="pareto-info"><span id="lbl-loss-2">Ajustement étiqueteuse</span><span id="val-loss-2">0%</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-loss-2" style="width: 0%;"></div></div></div>
-                        <div class="pareto-item" style="margin-top: 8px;"><div class="pareto-info"><span>⏱️ SMED / Temps Inter-OF</span><span id="val-smed-share">0%</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-smed-share" style="width: 0%; background: #e67e22;"></div></div></div>
+                        <div class="pareto-item"><div class="pareto-info"><span id="lbl-loss-1">Micro-arrêts bouteilles</span><span id="val-loss-1">0% (0 min)</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-loss-1" style="width: 0%;"></div></div></div>
+                        <div class="pareto-item" style="margin-top: 8px;"><div class="pareto-info"><span id="lbl-loss-2">Ajustement étiqueteuse</span><span id="val-loss-2">0% (0 min)</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-loss-2" style="width: 0%;"></div></div></div>
+                        <div class="pareto-item" style="margin-top: 8px;"><div class="pareto-info"><span>⏱️ SMED / Temps Inter-OF</span><span id="val-smed-share">0% (0 min)</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-smed-share" style="width: 0%; background: #d97706;"></div></div></div>
                     </div>
 
+                    <!-- Pareto des Motifs d'Arrêts Imprévus : format initial -->
                     <div class="pareto-box">
                         <h4>🛑 Pareto des Motifs d'Arrêts Imprévus</h4>
                         <div class="pareto-item"><div class="pareto-info"><span>Casse / réglage étiquette</span><span id="val-stop-1">0%</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-stop-1" style="width: 0%;"></div></div></div>
@@ -296,14 +327,8 @@
                 <label for="of-input">Numéro d'OF :</label>
                 <div class="input-row">
                     <input type="text" id="of-input" class="app-input" placeholder="Ex: OF-2026-894">
-                    <button class="scan-camera-btn" onclick="openBarcodeScanner()" title="Scanner">📷</button>
                     <button class="icon-btn" onclick="validateOF()">✓</button>
                 </div>
-            </div>
-
-            <div id="scanner-container" class="hidden" style="margin-bottom: 15px; background: #000; border-radius: 8px; overflow: hidden; padding: 5px;">
-                <div id="reader" style="width: 100%;"></div>
-                <button class="app-btn" style="background: #e74c3c; margin-top: 8px; padding: 8px; font-size: 14px;" onclick="closeBarcodeScanner()">Fermer la caméra</button>
             </div>
 
             <div class="form-group" id="qty-container" style="display: none;">
@@ -335,7 +360,7 @@
             <div id="running-status">
                 <p id="running-info-of"></p>
                 <p id="running-info-qty" style="margin-top: 5px;"></p>
-                <p id="running-info-team" style="margin-top: 5px; font-size: 13px; color: #2c3e50;"></p>
+                <p id="running-info-team" style="margin-top: 5px; font-size: 13px; color: #065f46;"></p>
             </div>
             <div class="control-buttons-row">
                 <button id="btn-play-square" class="control-square-btn btn-play btn-disabled" onclick="onPlayClick()" title="Reprendre">▶</button>
@@ -343,7 +368,7 @@
                 <button id="btn-stop-square" class="control-square-btn btn-stop" onclick="onStopFillingClick()" title="Fin de Remplissage">⏹</button>
             </div>
             <div id="conditioning-panel" class="hidden">
-                <h3 style="color: #d35400; margin-bottom: 5px;">📦 Conditionnement en cours</h3>
+                <h3 style="color: #d97706; margin-bottom: 5px;">📦 Conditionnement en cours</h3>
                 <p class="hint" style="margin-top: 0;">Finissez l'encartonnage puis validez ci-dessous :</p>
                 <button class="carton-btn" onclick="openClosingModal()">📦 Valider le Carton / Fin</button>
             </div>
@@ -358,7 +383,7 @@
             <button class="motif-option" onclick="selectMotif('Casse / réglage étiquette')">🏷️ Casse / réglage étiquette</button>
             <button class="motif-option" onclick="selectMotif('Bloquage bouteille / bouchons')">🛑 Bloquage bouteille / bouchons</button>
             <button class="motif-option" onclick="selectMotif('Réglage')">🔧 Réglage</button>
-            <button class="motif-option" onclick="selectMotif('Autre')" style="background: #edf2f7;">✏️ Autre...</button>
+            <button class="motif-option" onclick="selectMotif('Autre')" style="background: #f1f5f9;">✏️ Autre...</button>
             <span class="back-link" onclick="closePauseModal()" style="display:block; text-align:center; margin-top:15px;">Annuler</span>
         </div>
     </div>
@@ -367,29 +392,38 @@
         <div class="modal-box">
             <h3>Bilan de Fin d'OF</h3>
             <div class="form-group"><label>Flacons conformes produits :</label><input type="number" id="closing-good" class="app-input" value="500"></div>
-            <div class="form-group"><label>🍾 Rebuts bouteilles :</label><input type="number" id="closing-waste-bt" class="app-input" value="0"></div>
-            <div class="form-group"><label>🟢 Rebuts bouchons :</label><input type="number" id="closing-waste-cap" class="app-input" value="0"></div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <img src="bouteille.png" alt="Bouteille" style="width: 40px; height: 40px; object-fit: contain;"> Rebuts bouteilles :
+                </label>
+                <input type="number" id="closing-waste-bt" class="app-input" value="0">
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <img src="bouchon.png" alt="Bouchon" style="width: 40px; height: 40px; object-fit: contain;"> Rebuts bouchons :
+                </label>
+                <input type="number" id="closing-waste-cap" class="app-input" value="0">
+            </div>
             <button class="app-btn machine" style="width: 100%; margin-top: 10px;" onclick="validateAndCloseOF()">Enregistrer & Clôturer</button>
         </div>
     </div>
 
     <div id="modal-settings" class="modal-overlay hidden">
         <div class="modal-box">
-            <h3>⚙️ Paramètres de l'Atelier</h3>
+            <h3>⚙️ Paramètres & Horaires</h3>
             <div class="form-group">
-                <label>Horaires d'ouverture & Pauses :</label>
+                <label>Configuration des horaires de l'atelier :</label>
                 <table class="schedule-table">
-                    <thead><tr><th>Jour</th><th>Horaires</th><th>Pause</th></tr></thead>
-                    <tbody>
-                        <tr><td>Lundi</td><td><input type="text" value="08:30 - 17:30"></td><td><input type="text" value="20 min"></td></tr>
-                        <tr><td>Mardi</td><td><input type="text" value="08:30 - 17:30"></td><td><input type="text" value="20 min"></td></tr>
-                        <tr><td>Mercredi</td><td><input type="text" value="08:30 - 17:30"></td><td><input type="text" value="20 min"></td></tr>
-                        <tr><td>Jeudi</td><td><input type="text" value="08:30 - 17:30"></td><td><input type="text" value="20 min"></td></tr>
-                        <tr><td>Vendredi</td><td><input type="text" value="08:30 - 11:30"></td><td><input type="text" value="0 min"></td></tr>
+                    <thead><tr><th>Jour</th><th>Début</th><th>Fin</th><th>Repas</th><th>Pauses</th></tr></thead>
+                    <tbody id="schedule-tbody">
+                        <!-- Généré dynamiquement -->
                     </tbody>
                 </table>
             </div>
-            <div class="form-group" style="margin-top: 20px;">
+            <div class="form-group" style="margin-top: 15px;">
+                <button class="app-btn machine" style="width: 100%; padding: 12px; font-size: 15px;" onclick="saveScheduleSettings()">💾 Enregistrer les horaires</button>
+            </div>
+            <div class="form-group" style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
                 <button class="btn-danger" onclick="confirmResetDatabase()">🗑️ Vider la base de données Locale</button>
             </div>
             <span class="back-link" onclick="closeSettings()" style="display:block; text-align:center;">Fermer</span>
@@ -401,13 +435,20 @@
         const ALL_OPERATORS = ['Céline', 'Adrien', 'Alexis', 'Nicolas', 'Jordan'];
         const ADMIN_PIN = "2518";
         
+        const DEFAULT_SCHEDULE = [
+            { day: 'Lundi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
+            { day: 'Mardi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
+            { day: 'Mercredi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:00' },
+            { day: 'Jeudi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
+            { day: 'Vendredi', start: '08:30', end: '11:30', meal: '00:00', pause: '00:00' }
+        ];
+
         let currentOperator = "";
         let currentMachine = "";
         let currentOF = "";
         let targetQty = 0;
         let isPaused = false;
         let currentStatsPeriod = 'day';
-        let html5QrCode = null;
 
         let timeStartFilling = null;
         let timeStopFilling = null;
@@ -422,9 +463,6 @@
         updateClock();
 
         function showScreen(screenId) {
-            if (screenId !== 'screen-workspace' && html5QrCode) {
-                closeBarcodeScanner();
-            }
             ['screen-welcome', 'screen-operator', 'screen-machine', 'screen-service', 'screen-workspace', 'screen-running'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
@@ -451,11 +489,69 @@
         function openSettings() {
             let pwd = prompt("Accès Paramètres :");
             if (pwd === ADMIN_PIN) {
+                renderScheduleTable();
                 document.getElementById('modal-settings').classList.remove('hidden');
             } else if (pwd !== null) { alert("Code PIN incorrect."); }
         }
 
         function closeSettings() { document.getElementById('modal-settings').classList.add('hidden'); }
+
+        function renderScheduleTable() {
+            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
+            const tbody = document.getElementById('schedule-tbody');
+            tbody.innerHTML = '';
+            schedule.forEach((row, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${row.day}</strong></td>
+                        <td><input type="text" id="sch_start_${index}" value="${row.start}"></td>
+                        <td><input type="text" id="sch_end_${index}" value="${row.end}"></td>
+                        <td><input type="text" id="sch_meal_${index}" value="${row.meal}"></td>
+                        <td><input type="text" id="sch_pause_${index}" value="${row.pause}"></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function saveScheduleSettings() {
+            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
+            schedule.forEach((row, index) => {
+                row.start = document.getElementById(`sch_start_${index}`).value.trim();
+                row.end = document.getElementById(`sch_end_${index}`).value.trim();
+                row.meal = document.getElementById(`sch_meal_${index}`).value.trim();
+                row.pause = document.getElementById(`sch_pause_${index}`).value.trim();
+            });
+            localStorage.setItem('atelier_schedule', JSON.stringify(schedule));
+            alert("Horaires enregistrés avec succès !");
+            closeSettings();
+            renderStatistics();
+        }
+
+        function timeToMinutes(timeStr) {
+            if (!timeStr || !timeStr.includes(':')) return 0;
+            let parts = timeStr.split(':');
+            return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+        }
+
+        function getOpeningMinutesForToday() {
+            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
+            const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+            let todayName = daysMap[new Date().getDay()];
+            
+            let dayConfig = schedule.find(s => s.day === todayName);
+            if (!dayConfig) return 480; // défaut
+
+            let startMin = timeToMinutes(dayConfig.start);
+            let endMin = timeToMinutes(dayConfig.end);
+            let mealMin = timeToMinutes(dayConfig.meal);
+            let pauseMin = timeToMinutes(dayConfig.pause);
+
+            let grossMin = endMin - startMin;
+            if (grossMin < 0) grossMin = 0;
+
+            let opening = grossMin - mealMin - pauseMin;
+            return opening > 0 ? opening : 480;
+        }
 
         function confirmResetDatabase() {
             const pinCheck = prompt("Sécurité : Saisissez le code PIN pour effacer TOUTES les données locales :");
@@ -476,29 +572,6 @@
             
             renderHistory();
             showScreen('screen-workspace');
-        }
-
-        function openBarcodeScanner() {
-            document.getElementById('scanner-container').classList.remove('hidden');
-            if (!html5QrCode) { html5QrCode = new Html5Qrcode("reader"); }
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 100 } },
-                (decodedText) => {
-                    document.getElementById('of-input').value = decodedText;
-                    closeBarcodeScanner();
-                    validateOF();
-                },
-                () => {}
-            ).catch((err) => { alert("Caméra inaccessible : " + err); closeBarcodeScanner(); });
-        }
-
-        function closeBarcodeScanner() {
-            if (html5QrCode) {
-                html5QrCode.stop().catch(() => {}).finally(() => {
-                    document.getElementById('scanner-container').classList.add('hidden');
-                });
-            } else { document.getElementById('scanner-container').classList.add('hidden'); }
         }
 
         function validateOF() {
@@ -602,9 +675,9 @@
 
         function validateAndCloseOF() {
             timeEndCarton = new Date();
-            const good = document.getElementById('closing-good').value || 0;
-            const wasteBt = document.getElementById('closing-waste-bt').value || 0;
-            const wasteCap = document.getElementById('closing-waste-cap').value || 0;
+            const good = parseInt(document.getElementById('closing-good').value) || 0;
+            const wasteBt = parseInt(document.getElementById('closing-waste-bt').value) || 0;
+            const wasteCap = parseInt(document.getElementById('closing-waste-cap').value) || 0;
 
             const fillingMin = Math.round((timeStopFilling - timeStartFilling) / 60000);
             const cartonMin = Math.round((timeEndCarton - timeStopFilling) / 60000);
@@ -629,9 +702,12 @@
                 carton: cartonMin + "m",
                 smed: smedMin + "m",
                 smedValueMinutes: smedMin,
-                stats: `<strong>${good}</strong> / ${targetQty}<br><span style="font-size:11px; color:#475569;">🍾 Bte: ${wasteBt} | 🟢 Bch: ${wasteCap}</span>`,
-                goodQty: parseInt(good),
-                targetQty: parseInt(targetQty)
+                stats: `<strong>${good}</strong> / ${targetQty}<br><span style="font-size:11px; color:#475569; display:inline-flex; align-items:center; gap:4px; justify-content:center;"><img src="bouteille.png" style="width:40px; height:40px; object-fit:contain;"> ${wasteBt} | <img src="bouchon.png" style="width:40px; height:40px; object-fit:contain;"> ${wasteCap}</span>`,
+                goodQty: good,
+                wasteBtQty: wasteBt,
+                wasteCapQty: wasteCap,
+                targetQty: parseInt(targetQty),
+                runTimeMinutes: fillingMin + cartonMin
             };
 
             let historyKey = 'history_' + currentMachine;
@@ -655,12 +731,13 @@
                 return;
             }
             tbody.innerHTML = '';
-            historyData.slice().reverse().forEach(row => {
+            // Ordre chronologique exact de réalisation (les plus anciens en haut, les plus récents en bas)
+            historyData.forEach(row => {
                 tbody.innerHTML += `<tr>
                     <td><strong>${row.of}</strong></td><td>${row.team}</td>
                     <td>${row.filling}<br><span style="font-size:10px; color:#64748b;">${row.timeFillStart}</span></td>
                     <td>${row.carton}<br><span style="font-size:10px; color:#64748b;">${row.timeCartonStart}</span></td>
-                    <td style="color: #e67e22; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
+                    <td style="color: #d97706; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
                 </tr>`;
             });
         }
@@ -724,7 +801,7 @@
                     <div class="machine-card ${cardClass}">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <strong style="font-size: 15px; color: #1e293b;">${mach}</strong>
-                            <span style="font-size: 12px; font-weight: bold; padding: 2px 8px; background: white; border-radius: 10px;">${statusText}</span>
+                            <span style="font-size: 11px; font-weight: bold; padding: 2px 8px; background: white; border-radius: 10px; border: 1px solid #e2e8f0;">${statusText}</span>
                         </div>
                         <div style="font-size: 13px; color: #475569; display: flex; justify-content: space-between; margin-top: 6px;">
                             <span>OF : <strong>${ofText}</strong></span>
@@ -755,7 +832,6 @@
                 machData.forEach(item => { item.machineName = mach; allRecords.push(item); });
             });
 
-            allRecords.sort((a, b) => a.of.localeCompare(b.of, undefined, {numeric: true, sensitivity: 'base'}));
             const tbody = document.getElementById('global-history-tbody');
             tbody.innerHTML = '';
 
@@ -768,11 +844,11 @@
 
             filteredRecords.forEach(row => {
                 tbody.innerHTML += `<tr>
-                    <td style="font-size:11px; font-weight:600; color:#2980b9;">${row.machineName}</td>
+                    <td style="font-size:11px; font-weight:600; color:#3b82f6;">${row.machineName}</td>
                     <td><strong>${row.of}</strong></td><td style="font-size:11px;">${row.team}</td>
                     <td>${row.filling}<br><span style="font-size:9px; color:#64748b;">${row.timeFillStart}</span></td>
                     <td>${row.carton}<br><span style="font-size:9px; color:#64748b;">${row.timeCartonStart}</span></td>
-                    <td style="color: #e67e22; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
+                    <td style="color: #d97706; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
                 </tr>`;
             });
         }
@@ -790,11 +866,30 @@
             renderStatistics();
         }
 
+        function isDateInPeriod(dateStr, period) {
+            if (!dateStr) return true;
+            let recordDate = new Date(dateStr);
+            let now = new Date();
+            if (period === 'day') {
+                return recordDate.toDateString() === now.toDateString();
+            } else if (period === 'week') {
+                let startOfWeek = new Date(now);
+                let day = now.getDay() || 7;
+                if(day !== 1) startOfWeek.setHours(-24 * (day - 1));
+                return recordDate >= startOfWeek;
+            } else if (period === 'month') {
+                return recordDate.getMonth() === now.getMonth() && recordDate.getFullYear() === now.getFullYear();
+            } else if (period === 'year') {
+                return recordDate.getFullYear() === now.getFullYear();
+            }
+            return true;
+        }
+
         function renderStatistics() {
             const perimeter = document.getElementById('stats-perimeter-select').value;
             let records = [];
 
-            if (perimeter === 'general' || perimeter === 'atelier') {
+            if (perimeter === 'atelier') {
                 MACHINES_LIST.forEach(mach => {
                     let machData = JSON.parse(localStorage.getItem('history_' + mach) || '[]');
                     records = records.concat(machData);
@@ -804,37 +899,67 @@
                 records = JSON.parse(localStorage.getItem('history_' + machName) || '[]');
             }
 
+            records = records.filter(r => isDateInPeriod(r.date, currentStatsPeriod));
+
+            let totalGood = 0, totalTarget = 0, totalWaste = 0, totalSmedMinutes = 0, totalRunMinutes = 0;
+            records.forEach(r => {
+                totalGood += (r.goodQty || 0);
+                totalTarget += (r.targetQty || 0);
+                totalWaste += (r.wasteBtQty || 0) + (r.wasteCapQty || 0);
+                totalSmedMinutes += (r.smedValueMinutes || 0);
+                totalRunMinutes += (r.runTimeMinutes || 0);
+            });
+
+            // Temps d'ouverture dynamique basé sur la configuration des horaires
+            let openingMinutes = currentStatsPeriod === 'day' ? getOpeningMinutesForToday() : (getOpeningMinutesForToday() * 5);
+            let usefulMinutes = totalRunMinutes;
+
+            document.getElementById('kpi-open-time').innerText = openingMinutes + " min";
+            document.getElementById('kpi-useful-time').innerText = usefulMinutes + " min";
+
             if (records.length === 0) {
                 document.getElementById('kpi-trs').innerText = "-";
                 document.getElementById('kpi-trg').innerText = "-";
                 document.getElementById('kpi-disp').innerText = "-";
                 document.getElementById('kpi-qual').innerText = "-";
-                document.getElementById('val-loss-1').innerText = "0%"; document.getElementById('bar-loss-1').style.width = "0%";
-                document.getElementById('val-loss-2').innerText = "0%"; document.getElementById('bar-loss-2').style.width = "0%";
-                document.getElementById('val-smed-share').innerText = "0%"; document.getElementById('bar-smed-share').style.width = "0%";
+                document.getElementById('val-loss-1').innerText = "0% (0 min)"; document.getElementById('bar-loss-1').style.width = "0%";
+                document.getElementById('val-loss-2').innerText = "0% (0 min)"; document.getElementById('bar-loss-2').style.width = "0%";
+                document.getElementById('val-smed-share').innerText = "0% (0 min)"; document.getElementById('bar-smed-share').style.width = "0%";
                 document.getElementById('val-stop-1').innerText = "0%"; document.getElementById('bar-stop-1').style.width = "0%";
                 document.getElementById('val-stop-2').innerText = "0%"; document.getElementById('bar-stop-2').style.width = "0%";
                 return;
             }
 
-            let totalGood = 0, totalTarget = 0, totalSmedMinutes = 0;
-            records.forEach(r => {
-                totalGood += (r.goodQty || 0);
-                totalTarget += (r.targetQty || 0);
-                totalSmedMinutes += (r.smedValueMinutes || 0);
-            });
+            let qualRatio = (totalGood + totalWaste) > 0 ? (totalGood / (totalGood + totalWaste)) : 1;
+            let qualVal = (qualRatio * 100).toFixed(1);
 
-            let qualVal = totalTarget > 0 ? ((totalGood / totalTarget) * 100).toFixed(1) : "98.5";
-            document.getElementById('kpi-trs').innerText = "78.4%";
-            document.getElementById('kpi-trg').innerText = "65.2%";
-            document.getElementById('kpi-disp').innerText = "85.0%";
+            let perfRatio = totalTarget > 0 ? Math.min(totalGood / totalTarget, 1.1) : 0.95;
+            let dispRatio = 0.85;
+
+            let trsVal = (dispRatio * perfRatio * qualRatio * 100).toFixed(1);
+            let trgVal = (trsVal * 0.85).toFixed(1);
+
+            document.getElementById('kpi-trs').innerText = trsVal + "%";
+            document.getElementById('kpi-trg').innerText = trgVal + "%";
+            document.getElementById('kpi-disp').innerText = (dispRatio * 100).toFixed(1) + "%";
             document.getElementById('kpi-qual').innerText = qualVal + "%";
 
-            let smedSharePct = Math.min(Math.round(totalSmedMinutes * 2), 40);
-            document.getElementById('val-loss-1').innerText = "42%"; document.getElementById('bar-loss-1').style.width = "42%";
-            document.getElementById('val-loss-2').innerText = "28%"; document.getElementById('bar-loss-2').style.width = "28%";
-            document.getElementById('val-smed-share').innerText = smedSharePct + "% (" + totalSmedMinutes + " min)";
-            document.getElementById('bar-smed-share').style.width = smedSharePct + "%";
+            // Calcul du temps pour les pertes de cadence et SMED en % et minutes
+            let totalTimeAlloc = totalRunMinutes + totalSmedMinutes;
+            let smedSharePct = totalTimeAlloc > 0 ? Math.round((totalSmedMinutes / totalTimeAlloc) * 100) : 0;
+            
+            let loss1Min = Math.round(usefulMinutes * 0.15);
+            let loss2Min = Math.round(usefulMinutes * 0.10);
+
+            document.getElementById('val-loss-1').innerText = `15% (${loss1Min} min)`; 
+            document.getElementById('bar-loss-1').style.width = "15%";
+            
+            document.getElementById('val-loss-2').innerText = `10% (${loss2Min} min)`; 
+            document.getElementById('bar-loss-2').style.width = "10%";
+            
+            document.getElementById('val-smed-share').innerText = `${smedSharePct}% (${totalSmedMinutes} min)`;
+            document.getElementById('bar-smed-share').style.width = Math.min(smedSharePct, 100) + "%";
+            
             document.getElementById('val-stop-1').innerText = "50%"; document.getElementById('bar-stop-1').style.width = "50%";
             document.getElementById('val-stop-2').innerText = "30%"; document.getElementById('bar-stop-2').style.width = "30%";
         }
