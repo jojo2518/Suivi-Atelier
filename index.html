@@ -96,6 +96,7 @@
         .app-btn:hover { background-color: #2563eb; transform: translateY(-1px); }
         .app-btn.machine { background-color: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); }
         .app-btn.machine:hover { background-color: #059669; }
+        .app-btn.machine-disabled { background-color: #94a3b8 !important; cursor: not-allowed; box-shadow: none !important; opacity: 0.8; }
         .app-btn.service-btn { background-color: #f59e0b; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3); }
         .app-btn.service-btn:hover { background-color: #d97706; }
         .app-btn.start { background-color: #10b981; font-size: 20px; padding: 18px; margin-top: 15px; }
@@ -130,7 +131,11 @@
         .machine-card.status-conditioning { border-left-color: #d97706; background: #fff7ed; }
         .machine-card.status-stop { border-left-color: #94a3b8; background: #f8fafc; }
 
-        #running-status { background: #f0fdf4; border: 2px solid #10b981; padding: 20px; border-radius: 12px; margin-bottom: 20px; color: #065f46; font-weight: 600; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        /* Statuts dynamiques pour l'écran de running */
+        #running-status { background: #f1f5f9; border: 2px solid #94a3b8; padding: 20px; border-radius: 12px; margin-bottom: 20px; color: #475569; font-weight: 600; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s; }
+        #running-status.status-waiting { background: #f1f5f9; border-color: #94a3b8; color: #475569; }
+        #running-status.status-play { background: #f0fdf4; border-color: #10b981; color: #065f46; }
+        #running-status.status-pause { background: #fffbeb; border-color: #f59e0b; color: #b45309; }
         
         .control-buttons-row { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
         .control-square-btn { width: 75px; height: 75px; border: none; border-radius: 14px; font-size: 28px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: transform 0.1s; }
@@ -187,6 +192,16 @@
         .schedule-table input { width: 100%; padding: 3px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; }
         .btn-danger { background-color: #ef4444; color: white; border: none; padding: 12px; width: 100%; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
         .btn-danger:hover { background-color: #dc2626; }
+
+        /* Pavé Numérique Tactile (Pop-up) */
+        .keypad-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); display: flex; justify-content: center; align-items: center; z-index: 200; }
+        .keypad-box { background: white; padding: 20px; border-radius: 16px; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
+        .keypad-display { font-size: 22px; font-weight: bold; background: #f8fafc; border: 2px solid #cbd5e1; padding: 12px; border-radius: 10px; margin-bottom: 15px; color: #1e293b; letter-spacing: 1px; min-height: 52px; display: flex; align-items: center; justify-content: center; }
+        .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .key-btn { background: #f1f5f9; border: 1px solid #cbd5e1; font-size: 20px; font-weight: bold; padding: 14px 0; border-radius: 8px; cursor: pointer; color: #1e293b; transition: background 0.1s; }
+        .key-btn:active { background: #cbd5e1; }
+        .key-btn.action { background: #fee2e2; color: #dc2626; }
+        .key-btn.validate { background: #10b981; color: white; grid-column: span 2; }
     </style>
 </head>
 <body>
@@ -222,17 +237,25 @@
             <span class="back-link" onclick="showScreen('screen-welcome')">Retour</span>
         </div>
 
+        <!-- ÉCRAN 2.5 : CHOIX ACTION OPÉRATEUR (Machines ou Mes Stats) -->
+        <div id="screen-operator-hub" class="hidden">
+            <h2 id="operator-hub-title">Espace Opérateur</h2>
+            <p class="hint">Que souhaitez-vous faire ?</p>
+            <div class="btn-grid" style="margin-top: 25px;">
+                <button class="app-btn machine" onclick="prepareMachineSelection()">🏭 Lancer / Gérer les Machines</button>
+                <button class="app-btn" style="background: #8b5cf6;" onclick="openOperatorStats()">📊 Mes Statistiques / Bilan</button>
+            </div>
+            <span class="back-link" onclick="showScreen('screen-operator')">Changer d'opérateur</span>
+        </div>
+
         <!-- ÉCRAN 3 : MACHINE -->
         <div id="screen-machine" class="hidden">
             <h2>Choix de la Machine</h2>
             <p id="operator-greeting" class="hint"></p>
-            <div class="btn-grid">
-                <button class="app-btn machine" onclick="selectMachine('E-fill SW 10ml 1')">E-fill SW 10ml 1</button>
-                <button class="app-btn machine" onclick="selectMachine('E-fill SW 10ml 2')">E-fill SW 10ml 2</button>
-                <button class="app-btn machine" onclick="selectMachine('E-fill 50/30ml')">E-fill 50/30ml</button>
-                <button class="app-btn machine" onclick="selectMachine('K-net')">K-net</button>
+            <div class="btn-grid" id="machines-selection-grid">
+                <!-- Généré dynamiquement -->
             </div>
-            <span class="back-link" onclick="showScreen('screen-operator')">Retour</span>
+            <span class="back-link" onclick="showScreen('screen-operator-hub')">Retour</span>
         </div>
 
         <!-- ÉCRAN 3.5 : ESPACE SERVICE (ADMIN) -->
@@ -290,7 +313,7 @@
                         </div>
                     </div>
 
-                    <!-- 6 KPIs alignés en 2 lignes de 3 -->
+                    <!-- 6 KPIs alignés -->
                     <div class="kpi-grid">
                         <div class="kpi-card highlight"><div class="kpi-label">TRS</div><div class="kpi-value" id="kpi-trs">-</div></div>
                         <div class="kpi-card highlight"><div class="kpi-label">TRG</div><div class="kpi-value" id="kpi-trg">-</div></div>
@@ -308,7 +331,7 @@
                         <div class="pareto-item" style="margin-top: 8px;"><div class="pareto-info"><span>⏱️ SMED / Temps Inter-OF</span><span id="val-smed-share">0% (0 min)</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-smed-share" style="width: 0%; background: #d97706;"></div></div></div>
                     </div>
 
-                    <!-- Pareto des Motifs d'Arrêts Imprévus : format initial -->
+                    <!-- Pareto des Motifs d'Arrêts Imprévus -->
                     <div class="pareto-box">
                         <h4>🛑 Pareto des Motifs d'Arrêts Imprévus</h4>
                         <div class="pareto-item"><div class="pareto-info"><span>Casse / réglage étiquette</span><span id="val-stop-1">0%</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-stop-1" style="width: 0%;"></div></div></div>
@@ -326,21 +349,21 @@
             <div class="form-group">
                 <label for="of-input">Numéro d'OF :</label>
                 <div class="input-row">
-                    <input type="text" id="of-input" class="app-input" placeholder="Ex: OF-2026-894">
+                    <input type="text" id="of-input" class="app-input" value="MO/" readonly onclick="openKeypad('of-input', true)" style="cursor: pointer; font-weight: bold; color: #1e293b;">
                     <button class="icon-btn" onclick="validateOF()">✓</button>
                 </div>
             </div>
 
             <div class="form-group" id="qty-container" style="display: none;">
                 <label for="qty-input">Quantité cible à produire :</label>
-                <input type="number" id="qty-input" class="app-input" placeholder="Ex: 500">
+                <input type="text" id="qty-input" class="app-input" placeholder="Ex: 500" readonly onclick="openKeypad('qty-input', false)" style="cursor: pointer; font-weight: bold;">
                 <div class="team-selection-box" style="margin-top: 15px;">
                     <label style="font-size: 13px; margin-bottom: 4px;">👥 Équipe sur le poste (Binôme / Trio) :</label>
                     <div class="team-chips-grid" id="team-chips-container"></div>
                 </div>
             </div>
 
-            <button id="start-btn" class="app-btn start hidden" onclick="startProduction()">START 🚀</button>
+            <button id="start-btn" class="app-btn start hidden" onclick="startProduction()">PRÉPARER LA SÉRIE 🚀</button>
 
             <div class="history-section">
                 <h4>📊 Historique du jour sur la machine</h4>
@@ -357,26 +380,73 @@
         <!-- ÉCRAN 5 : PRODUCTION & CONTRÔLE -->
         <div id="screen-running" class="hidden">
             <h2 id="running-title">Production en cours</h2>
-            <div id="running-status">
+            <div id="running-status" class="status-waiting">
                 <p id="running-info-of"></p>
                 <p id="running-info-qty" style="margin-top: 5px;"></p>
-                <p id="running-info-team" style="margin-top: 5px; font-size: 13px; color: #065f46;"></p>
+                <p id="running-info-team" style="margin-top: 5px; font-size: 13px;"></p>
             </div>
             <div class="control-buttons-row">
-                <button id="btn-play-square" class="control-square-btn btn-play btn-disabled" onclick="onPlayClick()" title="Reprendre">▶</button>
-                <button id="btn-pause-square" class="control-square-btn btn-pause" onclick="onPauseClick()" title="Pause / Motif">⏸</button>
-                <button id="btn-stop-square" class="control-square-btn btn-stop" onclick="onStopFillingClick()" title="Fin de Remplissage">⏹</button>
+                <button id="btn-play-square" class="control-square-btn btn-play" onclick="onPlayClick()" title="Lancer / Reprendre">▶</button>
+                <button id="btn-pause-square" class="control-square-btn btn-pause btn-disabled" onclick="onPauseClick()" title="Pause / Motif">⏸</button>
+                <button id="btn-stop-square" class="control-square-btn btn-stop btn-disabled" onclick="onStopFillingClick()" title="Fin de Remplissage">⏹</button>
             </div>
             <div id="conditioning-panel" class="hidden">
                 <h3 style="color: #d97706; margin-bottom: 5px;">📦 Conditionnement en cours</h3>
                 <p class="hint" style="margin-top: 0;">Finissez l'encartonnage puis validez ci-dessous :</p>
                 <button class="carton-btn" onclick="openClosingModal()">📦 Valider le Carton / Fin</button>
             </div>
-            <span class="back-link" onclick="resetWorkspace()" style="margin-top: 20px;">Annuler / Changer d'OF</span>
+            <span class="back-link" onclick="resetWorkspace()" style="margin-top: 20px;">Quitter / Annuler l'OF</span>
+        </div>
+
+        <!-- ÉCRAN 6 : MES STATISTIQUES OPÉRATEUR -->
+        <div id="screen-operator-stats" class="hidden">
+            <h2 id="operator-stats-title">📊 Mes Statistiques</h2>
+            <div class="filter-panel" style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong>📅 Date :</strong>
+                    <input type="date" id="op-stats-date" onchange="renderOperatorStats()" style="padding: 4px; font-size: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                </div>
+            </div>
+            <div class="kpi-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 15px;">
+                <div class="kpi-card highlight"><div class="kpi-label">Pièces Conformes</div><div class="kpi-value" id="op-stat-good">0</div></div>
+                <div class="kpi-card time-card"><div class="kpi-label">Temps Prod. Cumulé</div><div class="kpi-value" id="op-stat-time">0 min</div></div>
+            </div>
+            <div class="history-section" style="margin-top: 10px;">
+                <h4>Historique de mes OF (Jour)</h4>
+                <div style="overflow-x: auto; max-height: 220px;">
+                    <table class="history-table">
+                        <thead><tr><th>Mach.</th><th>OF</th><th>Équipe</th><th>Prod</th></tr></thead>
+                        <tbody id="op-stats-tbody"><tr><td colspan="4" style="color: #94a3b8; font-style: italic;">Aucune production enregistrée.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <span class="back-link" onclick="showScreen('screen-operator-hub')" style="margin-top: 15px;">Retour</span>
         </div>
     </div>
 
-    <!-- MODALES -->
+    <!-- MODALES & PAVÉ NUMÉRIQUE -->
+    <div id="modal-keypad" class="keypad-modal hidden">
+        <div class="keypad-box">
+            <div class="keypad-display" id="keypad-display-val">0</div>
+            <div class="keypad-grid">
+                <button class="key-btn" onclick="keypadPress('1')">1</button>
+                <button class="key-btn" onclick="keypadPress('2')">2</button>
+                <button class="key-btn" onclick="keypadPress('3')">3</button>
+                <button class="key-btn" onclick="keypadPress('4')">4</button>
+                <button class="key-btn" onclick="keypadPress('5')">5</button>
+                <button class="key-btn" onclick="keypadPress('6')">6</button>
+                <button class="key-btn" onclick="keypadPress('7')">7</button>
+                <button class="key-btn" onclick="keypadPress('8')">8</button>
+                <button class="key-btn" onclick="keypadPress('9')">9</button>
+                <button class="key-btn action" onclick="keypadClear()">C</button>
+                <button class="key-btn" onclick="keypadPress('0')">0</button>
+                <button class="key-btn action" onclick="keypadBack()">⌫</button>
+                <button class="key-btn validate" onclick="keypadValidate()">Valider ✓</button>
+            </div>
+            <span class="back-link" onclick="closeKeypad()" style="display:block; margin-top:12px;">Annuler</span>
+        </div>
+    </div>
+
     <div id="modal-pause" class="modal-overlay hidden">
         <div class="modal-box">
             <h3>Motif de Pause / Arrêt</h3>
@@ -391,18 +461,21 @@
     <div id="modal-closing" class="modal-overlay hidden">
         <div class="modal-box">
             <h3>Bilan de Fin d'OF</h3>
-            <div class="form-group"><label>Flacons conformes produits :</label><input type="number" id="closing-good" class="app-input" value="500"></div>
+            <div class="form-group">
+                <label>Flacons conformes produits :</label>
+                <input type="text" id="closing-good" class="app-input" value="500" readonly onclick="openKeypad('closing-good', false)" style="cursor: pointer; font-weight: bold;">
+            </div>
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px;">
                     <img src="bouteille.png" alt="Bouteille" style="width: 40px; height: 40px; object-fit: contain;"> Rebuts bouteilles :
                 </label>
-                <input type="number" id="closing-waste-bt" class="app-input" value="0">
+                <input type="text" id="closing-waste-bt" class="app-input" value="0" readonly onclick="openKeypad('closing-waste-bt', false)" style="cursor: pointer; font-weight: bold;">
             </div>
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px;">
                     <img src="bouchon.png" alt="Bouchon" style="width: 40px; height: 40px; object-fit: contain;"> Rebuts bouchons :
                 </label>
-                <input type="number" id="closing-waste-cap" class="app-input" value="0">
+                <input type="text" id="closing-waste-cap" class="app-input" value="0" readonly onclick="openKeypad('closing-waste-cap', false)" style="cursor: pointer; font-weight: bold;">
             </div>
             <button class="app-btn machine" style="width: 100%; margin-top: 10px;" onclick="validateAndCloseOF()">Enregistrer & Clôturer</button>
         </div>
@@ -415,9 +488,7 @@
                 <label>Configuration des horaires de l'atelier :</label>
                 <table class="schedule-table">
                     <thead><tr><th>Jour</th><th>Début</th><th>Fin</th><th>Repas</th><th>Pauses</th></tr></thead>
-                    <tbody id="schedule-tbody">
-                        <!-- Généré dynamiquement -->
-                    </tbody>
+                    <tbody id="schedule-tbody"></tbody>
                 </table>
             </div>
             <div class="form-group" style="margin-top: 15px;">
@@ -438,7 +509,7 @@
         const DEFAULT_SCHEDULE = [
             { day: 'Lundi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
             { day: 'Mardi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
-            { day: 'Mercredi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:00' },
+            { day: 'Mercredi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
             { day: 'Jeudi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
             { day: 'Vendredi', start: '08:30', end: '11:30', meal: '00:00', pause: '00:00' }
         ];
@@ -450,10 +521,14 @@
         let isPaused = false;
         let currentStatsPeriod = 'day';
 
+        let keypadTargetInputId = null;
+        let keypadIsPrefixedMO = false;
+        let keypadCurrentValue = "0";
+
         let timeStartFilling = null;
         let timeStopFilling = null;
         let timeEndCarton = null;
-        let lastMachineEndTime = {};
+        let lastOperatorEndTime = {}; // Mémorise la dernière fin d'OF de chaque opérateur pour son SMED personnel
 
         function updateClock() {
             const now = new Date();
@@ -463,7 +538,7 @@
         updateClock();
 
         function showScreen(screenId) {
-            ['screen-welcome', 'screen-operator', 'screen-machine', 'screen-service', 'screen-workspace', 'screen-running'].forEach(id => {
+            ['screen-welcome', 'screen-operator', 'screen-operator-hub', 'screen-machine', 'screen-service', 'screen-workspace', 'screen-running', 'screen-operator-stats'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(screenId).classList.remove('hidden');
@@ -474,7 +549,54 @@
         function selectOperator(name) {
             currentOperator = name;
             document.getElementById('operator-greeting').innerText = "Opérateur : " + currentOperator;
-            showScreen('screen-machine');
+            document.getElementById('operator-hub-title').innerText = "Espace de " + currentOperator;
+            showScreen('screen-operator-hub');
+        }
+
+        function openOperatorStats() {
+            document.getElementById('op-stats-date').value = new Date().toISOString().split('T')[0];
+            renderOperatorStats();
+            showScreen('screen-operator-stats');
+        }
+
+        function renderOperatorStats() {
+            const selectedDate = document.getElementById('op-stats-date').value;
+            let opRecords = [];
+
+            MACHINES_LIST.forEach(mach => {
+                let records = JSON.parse(localStorage.getItem('history_' + mach) || '[]');
+                records.forEach(r => {
+                    if (r.date === selectedDate && r.team && r.team.includes(currentOperator)) {
+                        r.machineName = mach;
+                        opRecords.push(r);
+                    }
+                });
+            });
+
+            let totalGood = 0;
+            let totalTime = 0;
+            const tbody = document.getElementById('op-stats-tbody');
+            tbody.innerHTML = '';
+
+            if (opRecords.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8; font-style: italic;">Aucune production enregistrée pour vous ce jour.</td></tr>';
+            } else {
+                opRecords.forEach(r => {
+                    totalGood += (r.goodQty || 0);
+                    totalTime += (r.runTimeMinutes || 0);
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-size:11px; font-weight:600; color:#3b82f6;">${r.machineName}</td>
+                            <td><strong>${r.of}</strong></td>
+                            <td style="font-size:11px;">${r.team}</td>
+                            <td><strong>${r.goodQty || 0}</strong> pcs</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('op-stat-good').innerText = totalGood;
+            document.getElementById('op-stat-time').innerText = totalTime + " min";
         }
 
         function promptAdminPassword() {
@@ -539,7 +661,7 @@
             let todayName = daysMap[new Date().getDay()];
             
             let dayConfig = schedule.find(s => s.day === todayName);
-            if (!dayConfig) return 480; // défaut
+            if (!dayConfig) return 480;
 
             let startMin = timeToMinutes(dayConfig.start);
             let endMin = timeToMinutes(dayConfig.end);
@@ -553,6 +675,14 @@
             return opening > 0 ? opening : 480;
         }
 
+        function getWorkshopStartMinutesToday() {
+            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
+            const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+            let todayName = daysMap[new Date().getDay()];
+            let dayConfig = schedule.find(s => s.day === todayName);
+            return dayConfig ? timeToMinutes(dayConfig.start) : (8 * 60 + 30); // 08:30 par défaut
+        }
+
         function confirmResetDatabase() {
             const pinCheck = prompt("Sécurité : Saisissez le code PIN pour effacer TOUTES les données locales :");
             if (pinCheck === ADMIN_PIN) {
@@ -562,10 +692,97 @@
             } else if (pinCheck !== null) { alert("Code incorrect."); }
         }
 
+        // --- GESTION DU PAVÉ NUMÉRIQUE TACTILE ---
+        function openKeypad(inputId, isMO) {
+            keypadTargetInputId = inputId;
+            keypadIsPrefixedMO = isMO;
+            let currentVal = document.getElementById(inputId).value;
+            if (isMO) {
+                keypadCurrentValue = currentVal.startsWith('MO/') ? currentVal.replace('MO/', '') : currentVal;
+            } else {
+                keypadCurrentValue = (currentVal === "" || currentVal === "0") ? "" : currentVal;
+            }
+            updateKeypadDisplay();
+            document.getElementById('modal-keypad').classList.remove('hidden');
+        }
+
+        function updateKeypadDisplay() {
+            let displayStr = keypadIsPrefixedMO ? "MO/" + keypadCurrentValue : (keypadCurrentValue === "" ? "0" : keypadCurrentValue);
+            document.getElementById('keypad-display-val').innerText = displayStr;
+        }
+
+        function keypadPress(digit) {
+            if (keypadCurrentValue === "0") {
+                keypadCurrentValue = digit;
+            } else {
+                keypadCurrentValue += digit;
+            }
+            updateKeypadDisplay();
+        }
+
+        function keypadClear() {
+            keypadCurrentValue = "";
+            updateKeypadDisplay();
+        }
+
+        function keypadBack() {
+            if (keypadCurrentValue.length > 1) {
+                keypadCurrentValue = keypadCurrentValue.slice(0, -1);
+            } else {
+                keypadCurrentValue = "";
+            }
+            updateKeypadDisplay();
+        }
+
+        function keypadValidate() {
+            let finalVal = keypadIsPrefixedMO ? "MO/" + keypadCurrentValue : (keypadCurrentValue === "" ? "0" : keypadCurrentValue);
+            document.getElementById(keypadTargetInputId).value = finalVal;
+            closeKeypad();
+        }
+
+        function closeKeypad() {
+            document.getElementById('modal-keypad').classList.add('hidden');
+        }
+
+        // --- CHOIX DE MACHINE AVEC VÉRIFICATION DU STATUT OCCUPÉ ---
+        function prepareMachineSelection() {
+            const container = document.getElementById('machines-selection-grid');
+            container.innerHTML = '';
+            MACHINES_LIST.forEach(mach => {
+                let st = JSON.parse(localStorage.getItem('status_' + mach) || 'null');
+                let isBusy = st && (st.status === 'play' || st.status === 'pause' || st.status === 'conditioning' || st.status === 'waiting');
+                
+                if (isBusy) {
+                    container.innerHTML += `
+                        <div style="display: flex; gap: 8px;">
+                            <button class="app-btn machine machine-disabled" style="flex: 1;" disabled>
+                                ${mach} <br><span style="font-size:11px; font-weight:normal;">🔴 En cours de production</span>
+                            </button>
+                            <button class="app-btn" style="background: #ef4444; padding: 0 15px; font-size: 14px;" onclick="forceUnlockMachine('${mach}')" title="Débloquer si bloqué par erreur">🔓</button>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML += `
+                        <button class="app-btn machine" onclick="selectMachine('${mach}')">
+                            ${mach} <br><span style="font-size:11px; font-weight:normal; opacity:0.8;">🟢 Disponible</span>
+                        </button>
+                    `;
+                }
+            });
+            showScreen('screen-machine');
+        }
+
+        function forceUnlockMachine(machName) {
+            if (confirm("Voulez-vous vraiment libérer / débloquer la machine " + machName + " ?")) {
+                localStorage.removeItem('status_' + machName);
+                prepareMachineSelection();
+            }
+        }
+
         function selectMachine(machineName) {
             currentMachine = machineName;
             document.getElementById('workspace-title').innerText = currentMachine + " (" + currentOperator + ")";
-            document.getElementById('of-input').value = "";
+            document.getElementById('of-input').value = "MO/";
             document.getElementById('qty-input').value = "";
             document.getElementById('qty-container').style.display = 'none';
             document.getElementById('start-btn').classList.add('hidden');
@@ -576,12 +793,11 @@
 
         function validateOF() {
             const ofVal = document.getElementById('of-input').value.trim();
-            if (ofVal === "") { alert("Veuillez saisir un numéro d'OF."); return; }
+            if (ofVal === "" || ofVal === "MO/") { alert("Veuillez saisir un numéro d'OF."); return; }
             currentOF = ofVal;
             document.getElementById('qty-container').style.display = 'block';
             document.getElementById('start-btn').classList.remove('hidden');
             buildTeamChips();
-            document.getElementById('qty-input').focus();
         }
 
         function buildTeamChips() {
@@ -601,19 +817,19 @@
             return selected.length === 0 ? currentOperator : selected.join(' & ');
         }
 
+        // --- DÉMARRAGE EN DEUX ÉTAPES : PRÉPARATION ---
         function startProduction() {
             const qtyVal = document.getElementById('qty-input').value.trim();
-            if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Quantité cible invalide."); return; }
+            if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Veuillez saisir une quantité cible valide."); return; }
             targetQty = parseInt(qtyVal);
-            timeStartFilling = new Date();
             let teamStr = getSelectedTeamString();
 
             let statusData = {
-                status: 'play',
-                statusText: 'En Remplissage 🚀',
+                status: 'waiting',
+                statusText: 'En attente de démarrage ⏳',
                 of: currentOF,
                 team: teamStr,
-                timeStart: timeStartFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})
+                timeStart: '-'
             };
 
             localStorage.setItem('status_' + currentMachine, JSON.stringify(statusData));
@@ -623,12 +839,44 @@
             document.getElementById('running-info-qty').innerText = "Objectif : " + targetQty + " pièces";
             document.getElementById('running-info-team').innerText = "Équipe : " + teamStr;
 
-            document.getElementById('btn-play-square').className = "control-square-btn btn-play btn-disabled";
-            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause";
-            document.getElementById('btn-stop-square').className = "control-square-btn btn-stop";
+            let statusBox = document.getElementById('running-status');
+            statusBox.className = "status-waiting";
+            statusBox.innerHTML = `
+                <p>OF en cours : ${currentOF}</p>
+                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${teamStr}</p>
+                <p style="margin-top: 8px; font-weight: bold; color: #475569;">Statut : En attente de démarrage ⏳</p>
+            `;
+
+            document.getElementById('btn-play-square').className = "control-square-btn btn-play";
+            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
+            document.getElementById('btn-stop-square').className = "control-square-btn btn-stop btn-disabled";
             document.getElementById('conditioning-panel').classList.add('hidden');
 
             showScreen('screen-running');
+        }
+
+        // --- APPUI SUR PLAY : LANCEMENT DU CYCLE ---
+        function onPlayClick() {
+            if(!timeStartFilling) {
+                timeStartFilling = new Date();
+            }
+            isPaused = false;
+            
+            let statusBox = document.getElementById('running-status');
+            statusBox.className = "status-play";
+            statusBox.innerHTML = `
+                <p>OF en cours : ${currentOF}</p>
+                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${getSelectedTeamString()}</p>
+                <p style="margin-top: 8px; font-weight: bold; color: #065f46;">Statut : En Remplissage 🚀</p>
+            `;
+
+            document.getElementById('btn-play-square').className = "control-square-btn btn-play btn-disabled";
+            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause";
+            document.getElementById('btn-stop-square').className = "control-square-btn btn-stop";
+
+            updateMachineStatusFieldLocal({ status: 'play', statusText: 'En Remplissage 🚀' });
         }
 
         function onPauseClick() { document.getElementById('modal-pause').classList.remove('hidden'); }
@@ -642,19 +890,20 @@
             }
             closePauseModal();
             isPaused = true;
+            
+            let statusBox = document.getElementById('running-status');
+            statusBox.className = "status-pause";
+            statusBox.innerHTML = `
+                <p>OF en cours : ${currentOF}</p>
+                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${getSelectedTeamString()}</p>
+                <p style="margin-top: 8px; font-weight: bold; color: #b45309;">Statut : Pause - ${motif} ⏸</p>
+            `;
+
             document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
             document.getElementById('btn-play-square').className = "control-square-btn btn-play";
             
             updateMachineStatusFieldLocal({ status: 'pause', statusText: 'Pause : ' + motif });
-        }
-
-        function onPlayClick() {
-            if(!isPaused) return;
-            isPaused = false;
-            document.getElementById('btn-play-square').className = "control-square-btn btn-play btn-disabled";
-            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause";
-            
-            updateMachineStatusFieldLocal({ status: 'play', statusText: 'En Remplissage 🚀' });
         }
 
         function onStopFillingClick() {
@@ -679,15 +928,24 @@
             const wasteBt = parseInt(document.getElementById('closing-waste-bt').value) || 0;
             const wasteCap = parseInt(document.getElementById('closing-waste-cap').value) || 0;
 
-            const fillingMin = Math.round((timeStopFilling - timeStartFilling) / 60000);
+            const fillingMin = Math.round((timeStopFilling - (timeStartFilling || timeStopFilling)) / 60000);
             const cartonMin = Math.round((timeEndCarton - timeStopFilling) / 60000);
 
+            // Calcul fin du SMED centré sur l'opérateur (ou sur l'ouverture de l'atelier si premier OF de la journée)
             let smedMin = 0;
-            if (lastMachineEndTime[currentMachine]) {
-                smedMin = Math.round((timeStartFilling - lastMachineEndTime[currentMachine]) / 60000);
-                if (smedMin < 0) smedMin = 0;
+            let startTimeMin = (timeStartFilling || new Date()).getHours() * 60 + (timeStartFilling || new Date()).getMinutes();
+
+            if (lastOperatorEndTime[currentOperator]) {
+                // S'il y a un OF précédent fait par cet opérateur aujourd'hui, on calcule l'écart personnel
+                smedMin = Math.round(((timeStartFilling || new Date()) - lastOperatorEndTime[currentOperator]) / 60000);
+            } else {
+                // Premier OF de la journée pour cet opérateur : écart par rapport à l'ouverture de l'atelier (ex: 8h30)
+                let workshopStartMin = getWorkshopStartMinutesToday();
+                smedMin = startTimeMin - workshopStartMin;
             }
-            lastMachineEndTime[currentMachine] = timeEndCarton;
+            if (smedMin < 0) smedMin = 0;
+
+            lastOperatorEndTime[currentOperator] = timeEndCarton;
 
             let teamStr = getSelectedTeamString();
             let todayDateStr = new Date().toISOString().split('T')[0];
@@ -696,7 +954,7 @@
                 date: todayDateStr,
                 of: currentOF,
                 team: teamStr,
-                timeFillStart: timeStartFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
+                timeFillStart: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 timeCartonStart: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 filling: fillingMin + "m",
                 carton: cartonMin + "m",
@@ -715,11 +973,13 @@
             records.push(newRecord);
             localStorage.setItem(historyKey, JSON.stringify(records));
 
-            localStorage.setItem('status_' + currentMachine, JSON.stringify({ status: 'stop', statusText: "À l'arrêt / Disponible", of: "-", team: "-", timeStart: "-" }));
+            // Libération de la machine
+            localStorage.removeItem('status_' + currentMachine);
+            timeStartFilling = null;
 
             document.getElementById('modal-closing').classList.add('hidden');
-            alert("OF " + currentOF + " clôturé et enregistré localement !");
-            selectMachine(currentMachine);
+            alert("OF " + currentOF + " clôturé et enregistré ! La machine est de nouveau disponible.");
+            showScreen('screen-operator-hub');
         }
 
         function renderHistory() {
@@ -731,7 +991,6 @@
                 return;
             }
             tbody.innerHTML = '';
-            // Ordre chronologique exact de réalisation (les plus anciens en haut, les plus récents en bas)
             historyData.forEach(row => {
                 tbody.innerHTML += `<tr>
                     <td><strong>${row.of}</strong></td><td>${row.team}</td>
@@ -790,7 +1049,8 @@
                     if (st.status === 'play') cardClass = "status-play";
                     else if (st.status === 'pause') cardClass = "status-pause";
                     else if (st.status === 'conditioning') cardClass = "status-conditioning";
-                    else if (st.status === 'stop') cardClass = "status-stop";
+                    else if (st.status === 'waiting') cardClass = "status-pause";
+                    else cardClass = "status-stop";
 
                     statusText = st.statusText || statusText;
                     ofText = st.of || ofText;
@@ -910,7 +1170,6 @@
                 totalRunMinutes += (r.runTimeMinutes || 0);
             });
 
-            // Temps d'ouverture dynamique basé sur la configuration des horaires
             let openingMinutes = currentStatsPeriod === 'day' ? getOpeningMinutesForToday() : (getOpeningMinutesForToday() * 5);
             let usefulMinutes = totalRunMinutes;
 
@@ -944,7 +1203,6 @@
             document.getElementById('kpi-disp').innerText = (dispRatio * 100).toFixed(1) + "%";
             document.getElementById('kpi-qual').innerText = qualVal + "%";
 
-            // Calcul du temps pour les pertes de cadence et SMED en % et minutes
             let totalTimeAlloc = totalRunMinutes + totalSmedMinutes;
             let smedSharePct = totalTimeAlloc > 0 ? Math.round((totalSmedMinutes / totalTimeAlloc) * 100) : 0;
             
@@ -965,7 +1223,11 @@
         }
 
         function resetWorkspace() {
-            if (confirm("Voulez-vous vraiment quitter cet OF en cours ?")) { selectMachine(currentMachine); }
+            if (confirm("Voulez-vous vraiment quitter / annuler cet OF en cours ?")) { 
+                localStorage.removeItem('status_' + currentMachine);
+                timeStartFilling = null;
+                showScreen('screen-operator-hub'); 
+            }
         }
     </script>
 </body>
