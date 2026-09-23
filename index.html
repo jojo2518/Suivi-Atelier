@@ -3,34 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi d'Atelier - Production Cloud Définitif</title>
+    <title>Suivi d'Atelier - Production Locale</title>
     <!-- Intégration de la bibliothèque de scan de code-barres -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     
-    <!-- SDK Firebase & Exposition Globale -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyB0OfBg2YUi6Is-yzMVq5XuUqMZUnT_AHY",
-            authDomain: "suivi-atelier-eliquide.firebaseapp.com",
-            projectId: "suivi-atelier-eliquide",
-            storageBucket: "suivi-atelier-eliquide.firebasestorage.app",
-            messagingSenderId: "236534200774",
-            appId: "1:236534200774:web:6cfc0bea59eceb163b5ac7"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Chemins valides à 4 segments pairs : atelier_root / donnees / [colName] / [docId]
-        window.FB_db = db;
-        window.FB_getDocRef = (colName, docId) => doc(db, "atelier_root", "donnees", colName, docId);
-        window.FB_getDoc = getDoc;
-        window.FB_setDoc = setDoc;
-    </script>
-
     <style>
         * {
             box-sizing: border-box;
@@ -414,7 +390,7 @@
                 </table>
             </div>
             <div class="form-group" style="margin-top: 20px;">
-                <button class="btn-danger" onclick="confirmResetDatabase()">🗑️ Vider la base de données Cloud</button>
+                <button class="btn-danger" onclick="confirmResetDatabase()">🗑️ Vider la base de données Locale</button>
             </div>
             <span class="back-link" onclick="closeSettings()" style="display:block; text-align:center;">Fermer</span>
         </div>
@@ -481,19 +457,12 @@
 
         function closeSettings() { document.getElementById('modal-settings').classList.add('hidden'); }
 
-        async function confirmResetDatabase() {
-            const pinCheck = prompt("Sécurité : Saisissez le code PIN pour effacer TOUTES les données du Cloud :");
+        function confirmResetDatabase() {
+            const pinCheck = prompt("Sécurité : Saisissez le code PIN pour effacer TOUTES les données locales :");
             if (pinCheck === ADMIN_PIN) {
-                try {
-                    for (let mach of MACHINES_LIST) {
-                        await window.FB_setDoc(window.FB_getDocRef("atelier_status", mach), { status: 'stop', statusText: "À l'arrêt", of: "-", team: "-", timeStart: "-" });
-                        await window.FB_setDoc(window.FB_getDocRef("atelier_history", mach), { records: [] });
-                    }
-                    alert("Base de données Cloud réinitialisée avec succès !");
-                    location.reload();
-                } catch (e) {
-                    alert("Erreur lors de la réinitialisation : " + e.message);
-                }
+                localStorage.clear();
+                alert("Base de données locale réinitialisée !");
+                location.reload();
             } else if (pinCheck !== null) { alert("Code incorrect."); }
         }
 
@@ -559,7 +528,7 @@
             return selected.length === 0 ? currentOperator : selected.join(' & ');
         }
 
-        async function startProduction() {
+        function startProduction() {
             const qtyVal = document.getElementById('qty-input').value.trim();
             if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Quantité cible invalide."); return; }
             targetQty = parseInt(qtyVal);
@@ -574,7 +543,7 @@
                 timeStart: timeStartFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})
             };
 
-            await saveMachineStatusCloud(currentMachine, statusData);
+            localStorage.setItem('status_' + currentMachine, JSON.stringify(statusData));
 
             document.getElementById('running-title').innerText = currentMachine + " - " + teamStr;
             document.getElementById('running-info-of').innerText = "OF en cours : " + currentOF;
@@ -592,7 +561,7 @@
         function onPauseClick() { document.getElementById('modal-pause').classList.remove('hidden'); }
         function closePauseModal() { document.getElementById('modal-pause').classList.add('hidden'); }
 
-        async function selectMotif(motif) {
+        function selectMotif(motif) {
             if(motif === 'Autre') {
                 let custom = prompt("Précisez le motif d'arrêt :");
                 if(custom) motif = "Autre : " + custom;
@@ -603,26 +572,26 @@
             document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
             document.getElementById('btn-play-square').className = "control-square-btn btn-play";
             
-            await updateMachineStatusFieldCloud(currentMachine, { status: 'pause', statusText: 'Pause : ' + motif });
+            updateMachineStatusFieldLocal({ status: 'pause', statusText: 'Pause : ' + motif });
         }
 
-        async function onPlayClick() {
+        function onPlayClick() {
             if(!isPaused) return;
             isPaused = false;
             document.getElementById('btn-play-square').className = "control-square-btn btn-play btn-disabled";
             document.getElementById('btn-pause-square').className = "control-square-btn btn-pause";
             
-            await updateMachineStatusFieldCloud(currentMachine, { status: 'play', statusText: 'En Remplissage 🚀' });
+            updateMachineStatusFieldLocal({ status: 'play', statusText: 'En Remplissage 🚀' });
         }
 
-        async function onStopFillingClick() {
+        function onStopFillingClick() {
             if(confirm("Confirmez-vous la fin du remplissage ?")) {
                 timeStopFilling = new Date();
                 document.getElementById('btn-stop-square').className = "control-square-btn btn-stop btn-disabled";
                 document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
                 document.getElementById('conditioning-panel').classList.remove('hidden');
 
-                await updateMachineStatusFieldCloud(currentMachine, { status: 'conditioning', statusText: 'Conditionnement 📦' });
+                updateMachineStatusFieldLocal({ status: 'conditioning', statusText: 'Conditionnement 📦' });
             }
         }
 
@@ -631,7 +600,7 @@
             document.getElementById('modal-closing').classList.remove('hidden');
         }
 
-        async function validateAndCloseOF() {
+        function validateAndCloseOF() {
             timeEndCarton = new Date();
             const good = document.getElementById('closing-good').value || 0;
             const wasteBt = document.getElementById('closing-waste-bt').value || 0;
@@ -665,55 +634,41 @@
                 targetQty: parseInt(targetQty)
             };
 
-            let historyRef = window.FB_getDocRef("atelier_history", currentMachine);
-            let snap = await window.FB_getDoc(historyRef);
-            let records = snap.exists() ? (snap.data().records || []) : [];
+            let historyKey = 'history_' + currentMachine;
+            let records = JSON.parse(localStorage.getItem(historyKey) || '[]');
             records.push(newRecord);
-            await window.FB_setDoc(historyRef, { records: records });
+            localStorage.setItem(historyKey, JSON.stringify(records));
 
-            await saveMachineStatusCloud(currentMachine, { status: 'stop', statusText: "À l'arrêt / Disponible", of: "-", team: "-", timeStart: "-" });
+            localStorage.setItem('status_' + currentMachine, JSON.stringify({ status: 'stop', statusText: "À l'arrêt / Disponible", of: "-", team: "-", timeStart: "-" }));
 
             document.getElementById('modal-closing').classList.add('hidden');
-            alert("OF " + currentOF + " clôturé et enregistré dans le Cloud !");
+            alert("OF " + currentOF + " clôturé et enregistré localement !");
             selectMachine(currentMachine);
         }
 
-        async function renderHistory() {
+        function renderHistory() {
             const tbody = document.getElementById('history-tbody');
-            try {
-                let snap = await window.FB_getDoc(window.FB_getDocRef("atelier_history", currentMachine));
-                let historyData = (snap.exists() && snap.data().records) ? snap.data().records : [];
-                
-                if (historyData.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré aujourd\'hui.</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = '';
-                historyData.slice().reverse().forEach(row => {
-                    tbody.innerHTML += `<tr>
-                        <td><strong>${row.of}</strong></td><td>${row.team}</td>
-                        <td>${row.filling}<br><span style="font-size:10px; color:#64748b;">${row.timeFillStart}</span></td>
-                        <td>${row.carton}<br><span style="font-size:10px; color:#64748b;">${row.timeCartonStart}</span></td>
-                        <td style="color: #e67e22; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
-                    </tr>`;
-                });
-            } catch (e) { tbody.innerHTML = '<tr><td colspan="6" style="color:red;">Erreur de chargement Cloud.</td></tr>'; }
+            let historyData = JSON.parse(localStorage.getItem('history_' + currentMachine) || '[]');
+            
+            if (historyData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré aujourd\'hui.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            historyData.slice().reverse().forEach(row => {
+                tbody.innerHTML += `<tr>
+                    <td><strong>${row.of}</strong></td><td>${row.team}</td>
+                    <td>${row.filling}<br><span style="font-size:10px; color:#64748b;">${row.timeFillStart}</span></td>
+                    <td>${row.carton}<br><span style="font-size:10px; color:#64748b;">${row.timeCartonStart}</span></td>
+                    <td style="color: #e67e22; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
+                </tr>`;
+            });
         }
 
-        async function saveMachineStatusCloud(machName, statusObj) {
-            try {
-                await window.FB_setDoc(window.FB_getDocRef("atelier_status", machName), statusObj);
-            } catch(e) { console.error(e); }
-        }
-
-        async function updateMachineStatusFieldCloud(machName, fieldsToUpdate) {
-            try {
-                let docRef = window.FB_getDocRef("atelier_status", machName);
-                let snap = await window.FB_getDoc(docRef);
-                let current = snap.exists() ? snap.data() : {};
-                let updated = Object.assign({}, current, fieldsToUpdate);
-                await window.FB_setDoc(docRef, updated);
-            } catch(e) { console.error(e); }
+        function updateMachineStatusFieldLocal(fieldsToUpdate) {
+            let current = JSON.parse(localStorage.getItem('status_' + currentMachine) || '{}');
+            let updated = Object.assign({}, current, fieldsToUpdate);
+            localStorage.setItem('status_' + currentMachine, JSON.stringify(updated));
         }
 
         function switchServiceTab(tabName) {
@@ -744,43 +699,39 @@
             }
         }
 
-        async function renderOverviewMachines() {
+        function renderOverviewMachines() {
             const container = document.getElementById('overview-machines-container');
-            container.innerHTML = 'Chargement Cloud...';
-            try {
-                container.innerHTML = '';
-                for (let mach of MACHINES_LIST) {
-                    let snap = await window.FB_getDoc(window.FB_getDocRef("atelier_status", mach));
-                    let st = snap.exists() ? snap.data() : null;
-                    let cardClass = "status-stop";
-                    let statusText = "À l'arrêt / Disponible";
-                    let ofText = "-";
-                    let teamText = "-";
+            container.innerHTML = '';
+            MACHINES_LIST.forEach(mach => {
+                let st = JSON.parse(localStorage.getItem('status_' + mach) || 'null');
+                let cardClass = "status-stop";
+                let statusText = "À l'arrêt / Disponible";
+                let ofText = "-";
+                let teamText = "-";
 
-                    if (st) {
-                        if (st.status === 'play') cardClass = "status-play";
-                        else if (st.status === 'pause') cardClass = "status-pause";
-                        else if (st.status === 'conditioning') cardClass = "status-conditioning";
-                        else if (st.status === 'stop') cardClass = "status-stop";
+                if (st) {
+                    if (st.status === 'play') cardClass = "status-play";
+                    else if (st.status === 'pause') cardClass = "status-pause";
+                    else if (st.status === 'conditioning') cardClass = "status-conditioning";
+                    else if (st.status === 'stop') cardClass = "status-stop";
 
-                        statusText = st.statusText || statusText;
-                        ofText = st.of || ofText;
-                        teamText = st.team || teamText;
-                    }
-
-                    container.innerHTML += `
-                        <div class="machine-card ${cardClass}">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <strong style="font-size: 15px; color: #1e293b;">${mach}</strong>
-                                <span style="font-size: 12px; font-weight: bold; padding: 2px 8px; background: white; border-radius: 10px;">${statusText}</span>
-                            </div>
-                            <div style="font-size: 13px; color: #475569; display: flex; justify-content: space-between; margin-top: 6px;">
-                                <span>OF : <strong>${ofText}</strong></span>
-                                <span>Équipe : <strong>${teamText}</strong></span>
-                            </div>
-                        </div>`;
+                    statusText = st.statusText || statusText;
+                    ofText = st.of || ofText;
+                    teamText = st.team || teamText;
                 }
-            } catch (e) { container.innerHTML = '<p style="color:red;">Erreur de connexion Cloud.</p>'; }
+
+                container.innerHTML += `
+                    <div class="machine-card ${cardClass}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <strong style="font-size: 15px; color: #1e293b;">${mach}</strong>
+                            <span style="font-size: 12px; font-weight: bold; padding: 2px 8px; background: white; border-radius: 10px;">${statusText}</span>
+                        </div>
+                        <div style="font-size: 13px; color: #475569; display: flex; justify-content: space-between; margin-top: 6px;">
+                            <span>OF : <strong>${ofText}</strong></span>
+                            <span>Équipe : <strong>${teamText}</strong></span>
+                        </div>
+                    </div>`;
+            });
         }
 
         function buildFilterCheckboxes() {
@@ -791,44 +742,39 @@
             });
         }
 
-        async function renderGlobalHistory() {
+        function renderGlobalHistory() {
             let allRecords = [];
             const selectedDate = document.getElementById('global-date-filter').value;
             const checkboxes = document.querySelectorAll('.machine-filter-chk');
             let activeMachines = [];
             checkboxes.forEach(chk => { if(chk.checked) activeMachines.push(chk.value); });
 
+            MACHINES_LIST.forEach(mach => {
+                if (!activeMachines.includes(mach)) return;
+                let machData = JSON.parse(localStorage.getItem('history_' + mach) || '[]');
+                machData.forEach(item => { item.machineName = mach; allRecords.push(item); });
+            });
+
+            allRecords.sort((a, b) => a.of.localeCompare(b.of, undefined, {numeric: true, sensitivity: 'base'}));
             const tbody = document.getElementById('global-history-tbody');
-            tbody.innerHTML = 'Chargement...';
+            tbody.innerHTML = '';
 
-            try {
-                for (let mach of MACHINES_LIST) {
-                    if (!activeMachines.includes(mach)) continue;
-                    let snap = await window.FB_getDoc(window.FB_getDocRef("atelier_history", mach));
-                    let machData = (snap.exists() && snap.data().records) ? snap.data().records : [];
-                    machData.forEach(item => { item.machineName = mach; allRecords.push(item); });
-                }
+            let filteredRecords = allRecords.filter(r => selectedDate ? (r.date === selectedDate) : true);
 
-                allRecords.sort((a, b) => a.of.localeCompare(b.of, undefined, {numeric: true, sensitivity: 'base'}));
-                tbody.innerHTML = '';
+            if (filteredRecords.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré.</td></tr>';
+                return;
+            }
 
-                let filteredRecords = allRecords.filter(r => selectedDate ? (r.date === selectedDate) : true);
-
-                if (filteredRecords.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré.</td></tr>';
-                    return;
-                }
-
-                filteredRecords.forEach(row => {
-                    tbody.innerHTML += `<tr>
-                        <td style="font-size:11px; font-weight:600; color:#2980b9;">${row.machineName}</td>
-                        <td><strong>${row.of}</strong></td><td style="font-size:11px;">${row.team}</td>
-                        <td>${row.filling}<br><span style="font-size:9px; color:#64748b;">${row.timeFillStart}</span></td>
-                        <td>${row.carton}<br><span style="font-size:9px; color:#64748b;">${row.timeCartonStart}</span></td>
-                        <td style="color: #e67e22; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
-                    </tr>`;
-                });
-            } catch(e) { tbody.innerHTML = '<tr><td colspan="7" style="color:red;">Erreur de chargement Cloud.</td></tr>'; }
+            filteredRecords.forEach(row => {
+                tbody.innerHTML += `<tr>
+                    <td style="font-size:11px; font-weight:600; color:#2980b9;">${row.machineName}</td>
+                    <td><strong>${row.of}</strong></td><td style="font-size:11px;">${row.team}</td>
+                    <td>${row.filling}<br><span style="font-size:9px; color:#64748b;">${row.timeFillStart}</span></td>
+                    <td>${row.carton}<br><span style="font-size:9px; color:#64748b;">${row.timeCartonStart}</span></td>
+                    <td style="color: #e67e22; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
+                </tr>`;
+            });
         }
 
         function buildStatsMachineOptions() {
@@ -844,57 +790,53 @@
             renderStatistics();
         }
 
-        async function renderStatistics() {
+        function renderStatistics() {
             const perimeter = document.getElementById('stats-perimeter-select').value;
             let records = [];
 
-            try {
-                if (perimeter === 'general' || perimeter === 'atelier') {
-                    for (let mach of MACHINES_LIST) {
-                        let snap = await window.FB_getDoc(window.FB_getDocRef("atelier_history", mach));
-                        if(snap.exists() && snap.data().records) records = records.concat(snap.data().records);
-                    }
-                } else if (perimeter.startsWith('machine_')) {
-                    let machName = perimeter.replace('machine_', '');
-                    let snap = await window.FB_getDoc(window.FB_getDocRef("atelier_history", machName));
-                    if(snap.exists() && snap.data().records) records = snap.data().records;
-                }
-
-                if (records.length === 0) {
-                    document.getElementById('kpi-trs').innerText = "-";
-                    document.getElementById('kpi-trg').innerText = "-";
-                    document.getElementById('kpi-disp').innerText = "-";
-                    document.getElementById('kpi-qual').innerText = "-";
-                    document.getElementById('val-loss-1').innerText = "0%"; document.getElementById('bar-loss-1').style.width = "0%";
-                    document.getElementById('val-loss-2').innerText = "0%"; document.getElementById('bar-loss-2').style.width = "0%";
-                    document.getElementById('val-smed-share').innerText = "0%"; document.getElementById('bar-smed-share').style.width = "0%";
-                    document.getElementById('val-stop-1').innerText = "0%"; document.getElementById('bar-stop-1').style.width = "0%";
-                    document.getElementById('val-stop-2').innerText = "0%"; document.getElementById('bar-stop-2').style.width = "0%";
-                    return;
-                }
-
-                let totalGood = 0, totalTarget = 0, totalSmedMinutes = 0;
-                records.forEach(r => {
-                    totalGood += (r.goodQty || 0);
-                    totalTarget += (r.targetQty || 0);
-                    totalSmedMinutes += (r.smedValueMinutes || 0);
+            if (perimeter === 'general' || perimeter === 'atelier') {
+                MACHINES_LIST.forEach(mach => {
+                    let machData = JSON.parse(localStorage.getItem('history_' + mach) || '[]');
+                    records = records.concat(machData);
                 });
+            } else if (perimeter.startsWith('machine_')) {
+                let machName = perimeter.replace('machine_', '');
+                records = JSON.parse(localStorage.getItem('history_' + machName) || '[]');
+            }
 
-                let qualVal = totalTarget > 0 ? ((totalGood / totalTarget) * 100).toFixed(1) : "98.5";
-                document.getElementById('kpi-trs').innerText = "78.4%";
-                document.getElementById('kpi-trg').innerText = "65.2%";
-                document.getElementById('kpi-disp').innerText = "85.0%";
-                document.getElementById('kpi-qual').innerText = qualVal + "%";
+            if (records.length === 0) {
+                document.getElementById('kpi-trs').innerText = "-";
+                document.getElementById('kpi-trg').innerText = "-";
+                document.getElementById('kpi-disp').innerText = "-";
+                document.getElementById('kpi-qual').innerText = "-";
+                document.getElementById('val-loss-1').innerText = "0%"; document.getElementById('bar-loss-1').style.width = "0%";
+                document.getElementById('val-loss-2').innerText = "0%"; document.getElementById('bar-loss-2').style.width = "0%";
+                document.getElementById('val-smed-share').innerText = "0%"; document.getElementById('bar-smed-share').style.width = "0%";
+                document.getElementById('val-stop-1').innerText = "0%"; document.getElementById('bar-stop-1').style.width = "0%";
+                document.getElementById('val-stop-2').innerText = "0%"; document.getElementById('bar-stop-2').style.width = "0%";
+                return;
+            }
 
-                let smedSharePct = Math.min(Math.round(totalSmedMinutes * 2), 40);
-                document.getElementById('val-loss-1').innerText = "42%"; document.getElementById('bar-loss-1').style.width = "42%";
-                document.getElementById('val-loss-2').innerText = "28%"; document.getElementById('bar-loss-2').style.width = "28%";
-                document.getElementById('val-smed-share').innerText = smedSharePct + "% (" + totalSmedMinutes + " min)";
-                document.getElementById('bar-smed-share').style.width = smedSharePct + "%";
-                document.getElementById('val-stop-1').innerText = "50%"; document.getElementById('bar-stop-1').style.width = "50%";
-                document.getElementById('val-stop-2').innerText = "30%"; document.getElementById('bar-stop-2').style.width = "30%";
+            let totalGood = 0, totalTarget = 0, totalSmedMinutes = 0;
+            records.forEach(r => {
+                totalGood += (r.goodQty || 0);
+                totalTarget += (r.targetQty || 0);
+                totalSmedMinutes += (r.smedValueMinutes || 0);
+            });
 
-            } catch(e) { console.error(e); }
+            let qualVal = totalTarget > 0 ? ((totalGood / totalTarget) * 100).toFixed(1) : "98.5";
+            document.getElementById('kpi-trs').innerText = "78.4%";
+            document.getElementById('kpi-trg').innerText = "65.2%";
+            document.getElementById('kpi-disp').innerText = "85.0%";
+            document.getElementById('kpi-qual').innerText = qualVal + "%";
+
+            let smedSharePct = Math.min(Math.round(totalSmedMinutes * 2), 40);
+            document.getElementById('val-loss-1').innerText = "42%"; document.getElementById('bar-loss-1').style.width = "42%";
+            document.getElementById('val-loss-2').innerText = "28%"; document.getElementById('bar-loss-2').style.width = "28%";
+            document.getElementById('val-smed-share').innerText = smedSharePct + "% (" + totalSmedMinutes + " min)";
+            document.getElementById('bar-smed-share').style.width = smedSharePct + "%";
+            document.getElementById('val-stop-1').innerText = "50%"; document.getElementById('bar-stop-1').style.width = "50%";
+            document.getElementById('val-stop-2').innerText = "30%"; document.getElementById('bar-stop-2').style.width = "30%";
         }
 
         function resetWorkspace() {
