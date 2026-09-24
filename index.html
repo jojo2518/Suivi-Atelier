@@ -932,7 +932,7 @@
                 initialTargetQty = 500;
             }
 
-            // Mise à jour de l'équipe active dans Supabase avec l'opérateur du jour (ex: Jordan)
+            // CORRECTION : Forcer l'équipe active dans Supabase avec l'opérateur connecté (ex: Alexis)
             let newTeamStr = currentOperator;
             await db.from('machines_status').update({ team: newTeamStr }).eq('machine_name', currentMachine);
 
@@ -1103,7 +1103,6 @@
                 let remainingQty = initialTargetQty - producedSoFar;
                 if (remainingQty < 0) remainingQty = 0;
 
-                // 1. Enregistrement intermédiaire dans l'historique lié à l'équipe/opérateur actuel (ex: Céline)
                 let fillingMin = timeStartFilling ? Math.round((new Date() - timeStartFilling) / 60000) : 30;
                 let todayDateStr = new Date().toISOString().split('T')[0];
                 let teamStr = getSelectedTeamString();
@@ -1112,7 +1111,7 @@
                     date: todayDateStr,
                     machine_name: currentMachine,
                     of: currentOF,
-                    team: teamStr, // Conserve proprement le nom de l'opérateur de la veille
+                    team: teamStr,
                     time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                     time_carton_start: new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                     filling: fillingMin + "m",
@@ -1129,7 +1128,6 @@
 
                 await db.from('production_history').insert([interimRecord]);
 
-                // 2. Mise à jour de la machine en état "suspended" avec l'équipe actuelle pour traçabilité de reprise
                 let { error } = await db.from('machines_status').upsert({
                     machine_name: currentMachine,
                     status: 'suspended',
@@ -1192,7 +1190,7 @@
             lastOperatorEndTime[currentOperator] = timeEndCarton.toISOString();
             localStorage.setItem('atelier_last_op_ends', JSON.stringify(lastOperatorEndTime));
 
-            let teamStr = getSelectedTeamString(); // Équipe qui clôture (ex: Jordan)
+            let teamStr = getSelectedTeamString(); // Récupère bien l'équipe/opérateur actuel (ex: Alexis)
             let todayDateStr = new Date().toISOString().split('T')[0];
             let globalTarget = initialTargetQty > 0 ? initialTargetQty : targetQty;
 
@@ -1200,7 +1198,7 @@
                 date: todayDateStr,
                 machine_name: currentMachine,
                 of: currentOF,
-                team: teamStr, // Enregistre bien l'opérateur de clôture (Jordan) pour cette tranche
+                team: teamStr, // Attribue la ligne de clôture à l'opérateur du jour
                 time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 time_carton_start: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 filling: fillingMin + "m",
