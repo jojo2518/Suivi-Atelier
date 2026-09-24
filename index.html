@@ -497,7 +497,7 @@
         <div class="modal-box">
             <h3>Bilan de Fin d'OF</h3>
             <div class="form-group">
-                <label>Flacons conformes produits :</label>
+                <label id="closing-good-label">Flacons conformes produits :</label>
                 <input type="text" id="closing-good" class="app-input" value="500" readonly onclick="openKeypad('closing-good', false)" style="cursor: pointer; font-weight: bold;">
             </div>
             <div class="form-group">
@@ -926,13 +926,12 @@
             let { data } = await db.from('machines_status').select('*').eq('machine_name', currentMachine).single();
             if(data) {
                 targetQty = data.target_qty || 500; // Restant à faire
-                initialTargetQty = data.initial_target_qty || targetQty;
+                initialTargetQty = data.initial_target_qty || (targetQty + (data.produced_qty || 0));
             } else {
                 targetQty = 500;
                 initialTargetQty = 500;
             }
 
-            // CORRECTION CRITIQUE : L'équipe active devient l'opérateur du jour connecté (ex: Alexis)
             let newTeamStr = currentOperator;
             await db.from('machines_status').update({ team: newTeamStr, status: 'waiting' }).eq('machine_name', currentMachine);
 
@@ -985,7 +984,7 @@
             const qtyVal = document.getElementById('qty-input').value.trim();
             if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Veuillez saisir une quantité cible valide."); return; }
             targetQty = parseInt(qtyVal);
-            initialTargetQty = targetQty; // Mémorisation de l'objectif global de départ
+            initialTargetQty = targetQty;
             let teamStr = currentOperator;
 
             let statusData = {
@@ -1089,7 +1088,7 @@
         async function onSuspendDayClick() {
             if (confirm("Voulez-vous suspendre l'OF pour la fin de journée ? Il pourra être repris demain matin.")) {
                 let userInput = prompt(`Fin de journée : Veuillez saisir la quantité totale déjà produite à date sur l'OF ${currentOF} :`, "0");
-                if (userInput === null) return; // Annulation
+                if (userInput === null) return;
 
                 let producedSoFar = parseInt(userInput, 10);
                 if (isNaN(producedSoFar) || producedSoFar < 0) {
@@ -1158,15 +1157,24 @@
             }
         }
 
-        function openClosingModal() {
-            let defaultCloseQty = initialTargetQty > 0 ? initialTargetQty : targetQty;
-            document.getElementById('closing-good').value = defaultCloseQty;
+        async function openClosingModal() {
+            // CORRECTION : Calcul automatique de la quantité réalisée par l'opérateur de reprise (ex: Nicolas)
+            let qteRealisee = targetQty; // Par défaut le restant à faire
+            
+            try {
+                let { data } = await db.from('machines_status').select('*').eq('machine_name', currentMachine).single();
+                if (data && data.target_qty !== undefined) {
+                    qteRealisee = data.target_qty;
+                }
+            } catch (e) {}
+
+            document.getElementById('closing-good').value = qteRealisee;
             document.getElementById('modal-closing').classList.remove('hidden');
         }
 
         async function validateAndCloseOF() {
             timeEndCarton = new Date();
-            const good = parseInt(document.getElementById('closing-good').value) || 0;
+            const good = parseInt(document.getElementById('closing-good').value) || 0; // Quantité propre produite par cet opérateur (ex: 220)
             const wasteBt = parseInt(document.getElementById('closing-waste-bt').value) || 0;
             const wasteCap = parseInt(document.getElementById('closing-waste-cap').value) || 0;
 
@@ -1188,9 +1196,9 @@
             lastOperatorEndTime[currentOperator] = timeEndCarton.toISOString();
             localStorage.setItem('atelier_last_op_ends', JSON.stringify(lastOperatorEndTime));
 
-            let teamStr = currentOperator; // Attribue explicitement la clôture à l'opérateur connecté (ex: Alexis)
+            let teamStr = currentOperator; 
             let todayDateStr = new Date().toISOString().split('T')[0];
-            let globalTarget = initialTargetQty > 0 ? initialTargetQty : targetQty;
+            let globalTarget = initialTargetQty > 0 ? initialTargetQty : (good + (targetQty - good));
 
             let newRecord = {
                 date: todayDateStr,
@@ -1204,7 +1212,7 @@
                 smed: smedMin + "m",
                 smed_value_minutes: smedMin,
                 stats: `<strong>${good}</strong> / ${globalTarget}<br><span style="font-size:11px; color:#475569;">Bout: ${wasteBt} | Bouch: ${wasteCap}</span>`,
-                good_qty: good,
+                good_qty: good, // Enregistre bien les 220 pour Nicolas et non 500
                 waste_bt_qty: wasteBt,
                 waste_cap_qty: wasteCap,
                 target_qty: globalTarget,
@@ -1217,7 +1225,7 @@
             timeStartFilling = null;
             initialTargetQty = 0;
             document.getElementById('modal-closing').classList.add('hidden');
-            alert("OF " + currentOF + " clôturé et enregistré sur Supabase au nom de " + teamStr + " avec la quantité de " + good + " pièces !");
+            alert("OF " + currentOF + " clôturé ! Quantité propre enregistrée pour " + teamStr + " : " + good + " pièces (Total OF : " + globalTarget + ").");
             showScreen('screen-operator-hub');
         }
 
