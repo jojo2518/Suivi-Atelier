@@ -110,7 +110,7 @@
         .app-btn:hover { background-color: #2563eb; transform: translateY(-1px); }
         .app-btn.machine { background-color: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); }
         .app-btn.machine:hover { background-color: #059669; }
-        .app-btn.machine-disabled { background-color: #94a3b8 !important; cursor: not-allowed; box-shadow: none !important; opacity: 0.8; }
+        .app-btn.machine-suspended { background-color: #8b5cf6 !important; box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3); }
         .app-btn.service-btn { background-color: #f59e0b; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3); }
         .app-btn.service-btn:hover { background-color: #d97706; }
         .app-btn.start { background-color: #10b981; font-size: 20px; padding: 18px; margin-top: 15px; }
@@ -143,19 +143,22 @@
         .machine-card.status-play { border-left-color: #10b981; background: #f0fdf4; }
         .machine-card.status-pause { border-left-color: #f59e0b; background: #fffbeb; }
         .machine-card.status-conditioning { border-left-color: #d97706; background: #fff7ed; }
+        .machine-card.status-suspended { border-left-color: #8b5cf6; background: #f5f3ff; }
         .machine-card.status-stop { border-left-color: #94a3b8; background: #f8fafc; }
 
         #running-status { background: #f1f5f9; border: 2px solid #94a3b8; padding: 20px; border-radius: 12px; margin-bottom: 20px; color: #475569; font-weight: 600; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s; }
         #running-status.status-waiting { background: #f1f5f9; border-color: #94a3b8; color: #475569; }
         #running-status.status-play { background: #f0fdf4; border-color: #10b981; color: #065f46; }
         #running-status.status-pause { background: #fffbeb; border-color: #f59e0b; color: #b45309; }
+        #running-status.status-suspended { background: #f5f3ff; border-color: #8b5cf6; color: #6d28d9; }
         
-        .control-buttons-row { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
-        .control-square-btn { width: 75px; height: 75px; border: none; border-radius: 14px; font-size: 28px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: transform 0.1s; }
+        .control-buttons-row { display: flex; justify-content: center; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
+        .control-square-btn { width: 70px; height: 70px; border: none; border-radius: 14px; font-size: 26px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: transform 0.1s; }
         .control-square-btn:active { transform: scale(0.95); }
         .btn-play { background-color: #10b981; }
         .btn-pause { background-color: #f59e0b; }
         .btn-stop { background-color: #ef4444; }
+        .btn-suspended { background-color: #8b5cf6; }
         .btn-disabled { background-color: #cbd5e1 !important; cursor: not-allowed; opacity: 0.6; box-shadow: none !important; }
 
         #conditioning-panel { background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; border-radius: 12px; margin-top: 20px; text-align: center; }
@@ -395,6 +398,7 @@
                 <button id="btn-play-square" class="control-square-btn btn-play" onclick="onPlayClick()" title="Lancer / Reprendre">▶</button>
                 <button id="btn-pause-square" class="control-square-btn btn-pause btn-disabled" onclick="onPauseClick()" title="Pause / Motif">⏸</button>
                 <button id="btn-stop-square" class="control-square-btn btn-stop btn-disabled" onclick="onStopFillingClick()" title="Fin de Remplissage">⏹</button>
+                <button id="btn-suspend-square" class="control-square-btn btn-suspended" onclick="onSuspendDayClick()" title="Fin de journée / Suspendre OF">🏡</button>
             </div>
             <div id="conditioning-panel" class="hidden">
                 <h3 style="color: #d97706; margin-bottom: 5px;">📦 Conditionnement en cours</h3>
@@ -483,6 +487,8 @@
             <button class="motif-option" onclick="selectMotif('Bloquage bouteille / bouchons')">🛑 Bloquage bouteille / bouchons</button>
             <button class="motif-option" onclick="selectMotif('Réglage')">🔧 Réglage</button>
             <button class="motif-option" onclick="selectMotif('Autre')" style="background: #f1f5f9;">✏️ Autre...</button>
+            <button class="motif-option" onclick="selectMotif('Pause ☕')">☕ Pause (10 min planifiées)</button>
+            <button class="motif-option" onclick="selectMotif('Pause repas 🍽️')">🍽️ Pause repas (60 min planifiées)</button>
             <span class="back-link" onclick="closePauseModal()" style="display:block; text-align:center; margin-top:15px;">Annuler</span>
         </div>
     </div>
@@ -555,13 +561,14 @@
         let currentOF = "";
         let targetQty = 0;
         let isPaused = false;
+        let pauseStartTime = null;
         let currentStatsPeriod = 'day';
 
         let keypadTargetInputId = null;
         let keypadIsPrefixedMO = false;
         let keypadCurrentValue = "0";
 
-        let pinTargetAction = null; // 'service', 'settings', 'reset'
+        let pinTargetAction = null;
         let pinCurrentValue = "";
 
         let timeStartFilling = null;
@@ -641,7 +648,6 @@
             document.getElementById('op-stat-time').innerText = totalTime + " min";
         }
 
-        // --- GESTION DU PAVÉ NUMÉRIQUE PIN ---
         function openPinModal(actionType, titleText) {
             pinTargetAction = actionType;
             pinCurrentValue = "";
@@ -698,21 +704,11 @@
             document.getElementById('modal-pin').classList.add('hidden');
         }
 
-        function promptAdminPasswordPin() {
-            openPinModal('service', 'Code PIN - Accès Service 🛠️');
-        }
-
-        function openSettingsPinPrompt() {
-            openPinModal('settings', 'Code PIN - Paramètres ⚙️');
-        }
-
-        function confirmResetDatabasePinPrompt() {
-            openPinModal('reset', 'Sécurité : PIN pour effacer');
-        }
-
+        function promptAdminPasswordPin() { openPinModal('service', 'Code PIN - Accès Service 🛠️'); }
+        function openSettingsPinPrompt() { openPinModal('settings', 'Code PIN - Paramètres ⚙️'); }
+        function confirmResetDatabasePinPrompt() { openPinModal('reset', 'Sécurité : PIN pour effacer'); }
         function closeSettings() { document.getElementById('modal-settings').classList.add('hidden'); }
 
-        // Générateurs de sélecteurs d'heures sécurisés
         function generateHourOptions(selectedHour) {
             let html = '';
             for (let h = 0; h < 24; h++) {
@@ -845,19 +841,16 @@
         }
 
         function keypadClear() { keypadCurrentValue = ""; updateKeypadDisplay(); }
-
         function keypadBack() {
             if (keypadCurrentValue.length > 1) { keypadCurrentValue = keypadCurrentValue.slice(0, -1); }
             else { keypadCurrentValue = ""; }
             updateKeypadDisplay();
         }
-
         function keypadValidate() {
             let finalVal = keypadIsPrefixedMO ? "MO/" + keypadCurrentValue : (keypadCurrentValue === "" ? "0" : keypadCurrentValue);
             document.getElementById(keypadTargetInputId).value = finalVal;
             closeKeypad();
         }
-
         function closeKeypad() { document.getElementById('modal-keypad').classList.add('hidden'); }
 
         async function prepareMachineSelection() {
@@ -876,9 +869,16 @@
 
             MACHINES_LIST.forEach(mach => {
                 let st = machinesStatusMap[mach];
+                let isSuspended = st && st.status === 'suspended';
                 let isBusy = st && (st.status === 'play' || st.status === 'pause' || st.status === 'conditioning' || st.status === 'waiting');
                 
-                if (isBusy) {
+                if (isSuspended) {
+                    container.innerHTML += `
+                        <button class="app-btn machine machine-suspended" onclick="resumeSuspendedMachine('${mach}', '${st.of}', '${st.team}')">
+                            ${mach} <br><span style="font-size:11px; font-weight:normal;">🏡 OF en suspens : ${st.of}</span>
+                        </button>
+                    `;
+                } else if (isBusy) {
                     container.innerHTML += `
                         <div style="display: flex; gap: 8px;">
                             <button class="app-btn machine machine-disabled" style="flex: 1;" disabled>
@@ -915,6 +915,36 @@
             
             renderHistory();
             showScreen('screen-workspace');
+        }
+
+        async function resumeSuspendedMachine(machineName, ofNum, teamStr) {
+            currentMachine = machineName;
+            currentOF = ofNum;
+            
+            let { data } = await db.from('machines_status').select('*').eq('machine_name', currentMachine).single();
+            if(data && data.target_qty) {
+                targetQty = data.target_qty;
+            } else {
+                targetQty = 500;
+            }
+
+            document.getElementById('running-title').innerText = currentMachine + " - " + teamStr;
+            let statusBox = document.getElementById('running-status');
+            statusBox.className = "status-suspended";
+            statusBox.innerHTML = `
+                <p>OF repris (J+1) : ${currentOF}</p>
+                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${teamStr}</p>
+                <p style="margin-top: 8px; font-weight: bold; color: #6d28d9;">Statut : Reprise - En attente de Play ⏳</p>
+            `;
+
+            document.getElementById('btn-play-square').className = "control-square-btn btn-play";
+            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
+            document.getElementById('btn-stop-square').className = "control-square-btn btn-stop btn-disabled";
+            document.getElementById('conditioning-panel').classList.add('hidden');
+
+            timeStartFilling = new Date();
+            showScreen('screen-running');
         }
 
         function validateOF() {
@@ -954,7 +984,8 @@
                 status: 'waiting',
                 status_text: 'En attente de démarrage ⏳',
                 of: currentOF,
-                team: teamStr
+                team: teamStr,
+                target_qty: targetQty
             };
 
             await db.from('machines_status').upsert(statusData);
@@ -978,8 +1009,26 @@
         }
 
         async function onPlayClick() {
+            if (isPaused && pauseStartTime) {
+                let pauseDurationMin = Math.round((new Date() - pauseStartTime) / 60000);
+                let excessMin = 0;
+
+                if (window.currentPauseMotif === 'Pause ☕') {
+                    if (pauseDurationMin > 10) excessMin = pauseDurationMin - 10;
+                } else if (window.currentPauseMotif === 'Pause repas 🍽️') {
+                    if (pauseDurationMin > 60) excessMin = pauseDurationMin - 60;
+                } else {
+                    excessMin = pauseDurationMin;
+                }
+
+                if (excessMin > 0) {
+                    console.log(`Dépassement de pause enregistré : +${excessMin} min.`);
+                }
+            }
+
             if(!timeStartFilling) { timeStartFilling = new Date(); }
             isPaused = false;
+            pauseStartTime = null;
             
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-play";
@@ -1008,6 +1057,8 @@
             }
             closePauseModal();
             isPaused = true;
+            pauseStartTime = new Date();
+            window.currentPauseMotif = motif;
             
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-pause";
@@ -1022,6 +1073,39 @@
             document.getElementById('btn-play-square').className = "control-square-btn btn-play";
             
             await updateMachineStatusSupabase({ status: 'pause', status_text: 'Pause : ' + motif });
+        }
+
+        async function onSuspendDayClick() {
+            if (confirm("Voulez-vous suspendre l'OF pour la fin de journée ? Il pourra être repris demain matin.")) {
+                let now = new Date();
+                
+                let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
+                const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+                let todayName = daysMap[now.getDay()];
+                let dayConfig = schedule.find(s => s.day === todayName);
+                
+                if (dayConfig) {
+                    let endMinutesScheduled = timeToMinutes(dayConfig.end);
+                    let currentMinutesNow = now.getHours() * 60 + now.getMinutes();
+                    let earlyDepartureMin = endMinutesScheduled - currentMinutesNow;
+                    if (earlyDepartureMin > 0) {
+                        console.log(`Départ anticipé détecté : ${earlyDepartureMin} min avant la fermeture.`);
+                    }
+                }
+
+                // Enregistrement explicite et prioritaire du statut suspended dans Supabase
+                await db.from('machines_status').upsert({
+                    machine_name: currentMachine,
+                    status: 'suspended',
+                    status_text: 'Suspendu - Fin de journée 🏡',
+                    of: currentOF,
+                    team: getSelectedTeamString(),
+                    target_qty: targetQty
+                });
+
+                alert("OF suspendu avec succès pour la fin de journée !");
+                showScreen('screen-operator-hub');
+            }
         }
 
         async function onStopFillingClick() {
@@ -1196,6 +1280,7 @@
                     if (st.status === 'play') cardClass = "status-play";
                     else if (st.status === 'pause') cardClass = "status-pause";
                     else if (st.status === 'conditioning') cardClass = "status-conditioning";
+                    else if (st.status === 'suspended') cardClass = "status-suspended";
                     else if (st.status === 'waiting') cardClass = "status-pause";
 
                     statusText = st.status_text || statusText;
