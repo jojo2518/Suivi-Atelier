@@ -546,7 +546,7 @@
 
         const MACHINES_LIST = ['E-fill SW 10ml 1', 'E-fill SW 10ml 2', 'E-fill 50/30ml', 'K-net'];
         const ALL_OPERATORS = ['Céline', 'Adrien', 'Alexis', 'Nicolas', 'Jordan'];
-        const ADMIN_PIN = "0000";
+        const ADMIN_PIN = "2518";
         
         const DEFAULT_SCHEDULE = [
             { day: 'Lundi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
@@ -1093,8 +1093,8 @@
                     }
                 }
 
-                // Enregistrement explicite et prioritaire du statut suspended dans Supabase
-                await db.from('machines_status').upsert({
+                // 1. Enregistrement synchrone de l'état "suspended" dans Supabase en attendant que la base valide l'écriture
+                let { error } = await db.from('machines_status').upsert({
                     machine_name: currentMachine,
                     status: 'suspended',
                     status_text: 'Suspendu - Fin de journée 🏡',
@@ -1103,6 +1103,12 @@
                     target_qty: targetQty
                 });
 
+                if (error) {
+                    alert("Erreur lors de la synchronisation avec Supabase : " + error.message);
+                    return;
+                }
+
+                // 2. Une fois que Supabase a bien enregistré, on bascule vers le menu
                 alert("OF suspendu avec succès pour la fin de journée !");
                 showScreen('screen-operator-hub');
             }
