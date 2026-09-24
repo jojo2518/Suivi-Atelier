@@ -170,6 +170,7 @@
         .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
         .history-table th, .history-table td { border: 1px solid #cbd5e1; padding: 8px 6px; text-align: center; vertical-align: middle; }
         .history-table th { background-color: #f1f5f9; color: #334155; font-weight: 600; }
+        .row-discrepancy { background-color: #fff1f2 !important; } /* Fond rosé pour les écarts */
 
         .filter-panel { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 10px; margin-bottom: 12px; text-align: left; font-size: 13px; }
         .filter-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
@@ -560,7 +561,7 @@
         let currentMachine = "";
         let currentOF = "";
         let targetQty = 0;
-        let initialTargetQty = 0; // Objectif global initial de l'OF
+        let initialTargetQty = 0; 
         let isPaused = false;
         let pauseStartTime = null;
         let currentStatsPeriod = 'day';
@@ -925,7 +926,7 @@
             
             let { data } = await db.from('machines_status').select('*').eq('machine_name', currentMachine).single();
             if(data) {
-                targetQty = data.target_qty || 500; // Restant à faire
+                targetQty = data.target_qty || 500; 
                 initialTargetQty = data.initial_target_qty || (targetQty + (data.produced_qty || 0));
             } else {
                 targetQty = 500;
@@ -1157,24 +1158,38 @@
             }
         }
 
+        let expectedRemainingQty = 0; // Stocke le restant attendu pour vérification d'écart
+
         async function openClosingModal() {
-            // CORRECTION : Calcul automatique de la quantité réalisée par l'opérateur de reprise (ex: Nicolas)
-            let qteRealisee = targetQty; // Par défaut le restant à faire
+            let qteRealisee = targetQty; 
+            expectedRemainingQty = targetQty; // Mémorise la cible attendue
             
             try {
                 let { data } = await db.from('machines_status').select('*').eq('machine_name', currentMachine).single();
                 if (data && data.target_qty !== undefined) {
                     qteRealisee = data.target_qty;
+                    expectedRemainingQty = data.target_qty;
                 }
             } catch (e) {}
 
             document.getElementById('closing-good').value = qteRealisee;
+            document.getElementById('modal-closing').classList.add('hidden'); // Sécurité pour s'assurer du clean
             document.getElementById('modal-closing').classList.remove('hidden');
         }
 
         async function validateAndCloseOF() {
+            const good = parseInt(document.getElementById('closing-good').value) || 0;
+            
+            // CONTRÔLE D'ÉCART : Si la quantité saisie est inférieure au restant attendu
+            if (good < expectedRemainingQty) {
+                let diff = expectedRemainingQty - good;
+                let confirmation = confirm(`⚠️ ATTENTION : Il manque ${diff} bouteille(s) par rapport à l'objectif restant (${expectedRemainingQty} attendues, ${good} saisies).\n\nVoulez-vous confirmer ce manque et clôturer l'OF ?`);
+                if (!confirmation) {
+                    return; // L'opérateur annule et peut corriger sa saisie
+                }
+            }
+
             timeEndCarton = new Date();
-            const good = parseInt(document.getElementById('closing-good').value) || 0; // Quantité propre produite par cet opérateur (ex: 220)
             const wasteBt = parseInt(document.getElementById('closing-waste-bt').value) || 0;
             const wasteCap = parseInt(document.getElementById('closing-waste-cap').value) || 0;
 
@@ -1200,6 +1215,12 @@
             let todayDateStr = new Date().toISOString().split('T')[0];
             let globalTarget = initialTargetQty > 0 ? initialTargetQty : (good + (targetQty - good));
 
+            let hasDiscrepancy = good < expectedRemainingQty;
+            let statsText = `<strong>${good}</strong> / ${globalTarget}<br><span style="font-size:11px; color:#475569;">Bout: ${wasteBt} | Bouch: ${wasteCap}</span>`;
+            if (hasDiscrepancy) {
+                statsText += `<br><span style="font-size:10px; color:#dc2626; font-weight:bold;">⚠️ Écart détecté (-${expectedRemainingQty - good})</span>`;
+            }
+
             let newRecord = {
                 date: todayDateStr,
                 machine_name: currentMachine,
@@ -1211,8 +1232,8 @@
                 carton: cartonMin + "m",
                 smed: smedMin + "m",
                 smed_value_minutes: smedMin,
-                stats: `<strong>${good}</strong> / ${globalTarget}<br><span style="font-size:11px; color:#475569;">Bout: ${wasteBt} | Bouch: ${wasteCap}</span>`,
-                good_qty: good, // Enregistre bien les 220 pour Nicolas et non 500
+                stats: statsText,
+                good_qty: good,
                 waste_bt_qty: wasteBt,
                 waste_cap_qty: wasteCap,
                 target_qty: globalTarget,
@@ -1225,7 +1246,7 @@
             timeStartFilling = null;
             initialTargetQty = 0;
             document.getElementById('modal-closing').classList.add('hidden');
-            alert("OF " + currentOF + " clôturé ! Quantité propre enregistrée pour " + teamStr + " : " + good + " pièces (Total OF : " + globalTarget + ").");
+            alert("OF " + currentOF + " clôturé ! Quantité enregistrée pour " + teamStr + " : " + good + " pièces.");
             showScreen('screen-operator-hub');
         }
 
@@ -1389,7 +1410,11 @@
 
                 tbody.innerHTML = '';
                 filtered.forEach(row => {
-                    tbody.innerHTML += `<tr>
+                    // Détection si la ligne comporte un écart (si la quantité produite est inférieure à la cible de la ligne ou si le texte contient un écart)
+                    let isDiscrepancy = (row.good_qty < row.target_qty) && !row.stats.includes('Suspendu');
+                    let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
+
+                    tbody.innerHTML += `<tr class="${rowClass}">
                         <td style="font-size:11px; font-weight:600; color:#3b82f6;">${row.machine_name}</td>
                         <td><strong>${row.of}</strong></td><td style="font-size:11px;">${row.team}</td>
                         <td>${row.filling}<br><span style="font-size:9px; color:#64748b;">${row.time_fill_start}</span></td>
