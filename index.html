@@ -560,6 +560,7 @@
         let currentMachine = "";
         let currentOF = "";
         let targetQty = 0;
+        let initialTargetQty = 0; // Objectif global initial de l'OF
         let isPaused = false;
         let pauseStartTime = null;
         let currentStatsPeriod = 'day';
@@ -907,6 +908,7 @@
 
         function selectMachine(machineName) {
             currentMachine = machineName;
+            initialTargetQty = 0;
             document.getElementById('workspace-title').innerText = currentMachine + " (" + currentOperator + ")";
             document.getElementById('of-input').value = "MO/";
             document.getElementById('qty-input').value = "";
@@ -922,18 +924,22 @@
             currentOF = ofNum;
             
             let { data } = await db.from('machines_status').select('*').eq('machine_name', currentMachine).single();
-            if(data && data.target_qty) {
-                targetQty = data.target_qty;
+            if(data) {
+                targetQty = data.target_qty || 500; // Restant à faire
+                initialTargetQty = data.initial_target_qty || targetQty;
             } else {
                 targetQty = 500;
+                initialTargetQty = 500;
             }
+
+            alert(`Bonjour !\nReprise de l'OF en cours (${currentOF}).\nIl reste ${targetQty} pièces à produire sur les ${initialTargetQty} initiales.\n\nCliquez sur OK pour lancer la production.`);
 
             document.getElementById('running-title').innerText = currentMachine + " - " + teamStr;
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-suspended";
             statusBox.innerHTML = `
                 <p>OF repris (J+1) : ${currentOF}</p>
-                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                <p style="margin-top: 5px;">Reste à produire : ${targetQty} pièces (Total OF : ${initialTargetQty})</p>
                 <p style="margin-top: 5px; font-size: 13px;">Équipe : ${teamStr}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #6d28d9;">Statut : Reprise - En attente de Play ⏳</p>
             `;
@@ -977,6 +983,7 @@
             const qtyVal = document.getElementById('qty-input').value.trim();
             if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Veuillez saisir une quantité cible valide."); return; }
             targetQty = parseInt(qtyVal);
+            initialTargetQty = targetQty; // Mémorisation de l'objectif global de départ
             let teamStr = getSelectedTeamString();
 
             let statusData = {
@@ -985,7 +992,9 @@
                 status_text: 'En attente de démarrage ⏳',
                 of: currentOF,
                 team: teamStr,
-                target_qty: targetQty
+                target_qty: targetQty,
+                initial_target_qty: initialTargetQty,
+                produced_qty: 0
             };
 
             await db.from('machines_status').upsert(statusData);
@@ -1077,30 +1086,55 @@
 
         async function onSuspendDayClick() {
             if (confirm("Voulez-vous suspendre l'OF pour la fin de journée ? Il pourra être repris demain matin.")) {
-                let now = new Date();
-                
-                let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
-                const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-                let todayName = daysMap[now.getDay()];
-                let dayConfig = schedule.find(s => s.day === todayName);
-                
-                if (dayConfig) {
-                    let endMinutesScheduled = timeToMinutes(dayConfig.end);
-                    let currentMinutesNow = now.getHours() * 60 + now.getMinutes();
-                    let earlyDepartureMin = endMinutesScheduled - currentMinutesNow;
-                    if (earlyDepartureMin > 0) {
-                        console.log(`Départ anticipé détecté : ${earlyDepartureMin} min avant la fermeture.`);
-                    }
+                let userInput = prompt(`Fin de journée : Veuillez saisir la quantité totale déjà produite à date sur l'OF ${currentOF} :`, "0");
+                if (userInput === null) return; // Annulation
+
+                let producedSoFar = parseInt(userInput, 10);
+                if (isNaN(producedSoFar) || producedSoFar < 0) {
+                    alert("Veuillez entrer un nombre valide.");
+                    return;
                 }
 
-                // 1. Enregistrement synchrone de l'état "suspended" dans Supabase en attendant que la base valide l'écriture
+                if (initialTargetQty === 0) initialTargetQty = targetQty;
+                let remainingQty = initialTargetQty - producedSoFar;
+                if (remainingQty < 0) remainingQty = 0;
+
+                // 1. Enregistrement intermédiaire dans l'historique pour comptabiliser les pièces du jour dans le TRS
+                let fillingMin = timeStartFilling ? Math.round((new Date() - timeStartFilling) / 60000) : 30;
+                let todayDateStr = new Date().toISOString().split('T')[0];
+                let teamStr = getSelectedTeamString();
+
+                let interimRecord = {
+                    date: todayDateStr,
+                    machine_name: currentMachine,
+                    of: currentOF,
+                    team: teamStr,
+                    time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
+                    time_carton_start: new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
+                    filling: fillingMin + "m",
+                    carton: "0m",
+                    smed: "0m",
+                    smed_value_minutes: 0,
+                    stats: `<strong>${producedSoFar}</strong> / ${initialTargetQty} <span style="font-size:10px; color:#8b5cf6;">(Suspendu J-1)</span>`,
+                    good_qty: producedSoFar,
+                    waste_bt_qty: 0,
+                    waste_cap_qty: 0,
+                    target_qty: initialTargetQty,
+                    run_time_minutes: fillingMin
+                };
+
+                await db.from('production_history').insert([interimRecord]);
+
+                // 2. Mise à jour de la machine en état "suspended" avec le reste à faire
                 let { error } = await db.from('machines_status').upsert({
                     machine_name: currentMachine,
                     status: 'suspended',
                     status_text: 'Suspendu - Fin de journée 🏡',
                     of: currentOF,
-                    team: getSelectedTeamString(),
-                    target_qty: targetQty
+                    team: teamStr,
+                    target_qty: remainingQty,
+                    initial_target_qty: initialTargetQty,
+                    produced_qty: producedSoFar
                 });
 
                 if (error) {
@@ -1108,8 +1142,7 @@
                     return;
                 }
 
-                // 2. Une fois que Supabase a bien enregistré, on bascule vers le menu
-                alert("OF suspendu avec succès pour la fin de journée !");
+                alert(`OF suspendu avec succès !\nQuantité enregistrée pour aujourd'hui : ${producedSoFar} pièces.\nReste à produire demain : ${remainingQty} pièces.`);
                 showScreen('screen-operator-hub');
             }
         }
@@ -1126,7 +1159,9 @@
         }
 
         function openClosingModal() {
-            document.getElementById('closing-good').value = targetQty;
+            // Si c'était un OF repris, on pré-remplit avec l'objectif global initial
+            let defaultCloseQty = initialTargetQty > 0 ? initialTargetQty : targetQty;
+            document.getElementById('closing-good').value = defaultCloseQty;
             document.getElementById('modal-closing').classList.remove('hidden');
         }
 
@@ -1156,6 +1191,7 @@
 
             let teamStr = getSelectedTeamString();
             let todayDateStr = new Date().toISOString().split('T')[0];
+            let globalTarget = initialTargetQty > 0 ? initialTargetQty : targetQty;
 
             let newRecord = {
                 date: todayDateStr,
@@ -1168,11 +1204,11 @@
                 carton: cartonMin + "m",
                 smed: smedMin + "m",
                 smed_value_minutes: smedMin,
-                stats: `<strong>${good}</strong> / ${targetQty}<br><span style="font-size:11px; color:#475569;">Bout: ${wasteBt} | Bouch: ${wasteCap}</span>`,
+                stats: `<strong>${good}</strong> / ${globalTarget}<br><span style="font-size:11px; color:#475569;">Bout: ${wasteBt} | Bouch: ${wasteCap}</span>`,
                 good_qty: good,
                 waste_bt_qty: wasteBt,
                 waste_cap_qty: wasteCap,
-                target_qty: parseInt(targetQty),
+                target_qty: globalTarget,
                 run_time_minutes: fillingMin + cartonMin
             };
 
@@ -1180,8 +1216,9 @@
             await db.from('machines_status').delete().eq('machine_name', currentMachine);
 
             timeStartFilling = null;
+            initialTargetQty = 0;
             document.getElementById('modal-closing').classList.add('hidden');
-            alert("OF " + currentOF + " clôturé et enregistré sur Supabase !");
+            alert("OF " + currentOF + " clôturé et enregistré sur Supabase avec la quantité totale de " + good + " pièces !");
             showScreen('screen-operator-hub');
         }
 
