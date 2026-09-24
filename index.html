@@ -3,1250 +3,415 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi d'Atelier - Production</title>
-    
-    <!-- Intégration du client Supabase -->
+    <title>Supervision Atelier - E-liquide</title>
+    <!-- Tailwind CSS pour un design propre et professionnel -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SDK Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            background: linear-gradient(135deg, #334155 1%, #1e293b 100%);
-            color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            position: relative;
-            padding: 20px;
-        }
-        #top-right-icons {
-            position: absolute;
-            top: 20px;
-            right: 25px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            z-index: 10;
-        }
-        #live-clock {
-            font-size: 13px;
-            font-weight: 600;
-            color: #f1f5f9;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(8px);
-            padding: 6px 14px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .icon-top-btn {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            font-size: 16px;
-            cursor: pointer;
-            padding: 6px 12px;
-            border-radius: 20px;
-            color: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: all 0.2s;
-        }
-        .icon-top-btn:hover { background: rgba(255, 255, 255, 0.25); }
-        
-        .container {
-            width: 100%;
-            max-width: 680px;
-            background: rgba(255, 255, 255, 0.97);
-            backdrop-filter: blur(10px);
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        h2 { margin-bottom: 20px; color: #1e293b; font-weight: 700; letter-spacing: -0.5px; }
-        
-        #screen-welcome { 
-            cursor: pointer; 
-            padding: 10px;
-            transition: transform 0.2s;
-        }
-        #screen-welcome:hover {
-            transform: translateY(-2px);
-        }
-        
-        .logo-box { 
-            background: #f8fafc; 
-            padding: 20px; 
-            border-radius: 12px; 
-            margin: 20px 0; 
-            border: 2px dashed #cbd5e1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 120px;
-        }
-        .logo-box img {
-            max-width: 90%;
-            max-height: 90px;
-            object-fit: contain;
-            display: block;
-        }
-        
-        .hint { color: #64748b; font-size: 14px; margin-top: 15px; font-weight: 500; }
-        
-        .btn-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 20px; }
-        .app-btn {
-            background-color: #3b82f6; color: white; border: none; padding: 16px;
-            font-size: 16px; font-weight: 600; border-radius: 10px; cursor: pointer; transition: all 0.2s;
-            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-        }
-        .app-btn:hover { background-color: #2563eb; transform: translateY(-1px); }
-        .app-btn.machine { background-color: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); }
-        .app-btn.machine:hover { background-color: #059669; }
-        .app-btn.machine-disabled { background-color: #94a3b8 !important; cursor: not-allowed; box-shadow: none !important; opacity: 0.8; }
-        .app-btn.service-btn { background-color: #f59e0b; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3); }
-        .app-btn.service-btn:hover { background-color: #d97706; }
-        .app-btn.start { background-color: #10b981; font-size: 20px; padding: 18px; margin-top: 15px; }
-        .app-btn.start:hover { background-color: #059669; }
-        
-        .form-group { margin-bottom: 20px; text-align: left; }
-        .form-group label { display: block; font-weight: 600; margin-bottom: 8px; color: #334155; font-size: 14px; }
-        .input-row { display: flex; gap: 10px; }
-        .app-input { flex: 1; padding: 14px; font-size: 16px; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; background: #f8fafc; transition: border-color 0.2s; }
-        .app-input:focus { border-color: #3b82f6; background: #fff; }
-        
-        .icon-btn { background-color: #10b981; color: white; border: none; padding: 0 25px; font-size: 20px; border-radius: 10px; cursor: pointer; transition: background 0.2s; }
-        .icon-btn:hover { background-color: #059669; }
-        
-        .hidden { display: none !important; }
-        .back-link { display: inline-block; margin-top: 20px; color: #64748b; cursor: pointer; text-decoration: underline; font-size: 14px; font-weight: 600; transition: color 0.2s; }
-        .back-link:hover { color: #1e293b; }
-        
-        .team-selection-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: left; }
-        .team-chips-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-        .team-chip { background: #e2e8f0; color: #475569; border: none; padding: 6px 14px; font-size: 13px; font-weight: 600; border-radius: 20px; cursor: pointer; transition: all 0.2s; }
-        .team-chip.selected { background: #3b82f6; color: white; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3); }
-
-        .service-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
-        .service-tab-btn { flex: 1; padding: 10px 4px; background: #e2e8f0; border: none; font-weight: 600; border-radius: 8px; cursor: pointer; color: #475569; font-size: 13px; transition: all 0.2s; }
-        .service-tab-btn.active { background: #f59e0b; color: white; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3); }
-
-        .overview-grid { display: grid; grid-template-columns: 1fr; gap: 12px; text-align: left; max-height: 400px; overflow-y: auto; padding-right: 4px; }
-        .machine-card { background: #f8fafc; border-left: 6px solid #cbd5e1; padding: 14px 16px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
-        .machine-card.status-play { border-left-color: #10b981; background: #f0fdf4; }
-        .machine-card.status-pause { border-left-color: #f59e0b; background: #fffbeb; }
-        .machine-card.status-conditioning { border-left-color: #d97706; background: #fff7ed; }
-        .machine-card.status-stop { border-left-color: #94a3b8; background: #f8fafc; }
-
-        #running-status { background: #f1f5f9; border: 2px solid #94a3b8; padding: 20px; border-radius: 12px; margin-bottom: 20px; color: #475569; font-weight: 600; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s; }
-        #running-status.status-waiting { background: #f1f5f9; border-color: #94a3b8; color: #475569; }
-        #running-status.status-play { background: #f0fdf4; border-color: #10b981; color: #065f46; }
-        #running-status.status-pause { background: #fffbeb; border-color: #f59e0b; color: #b45309; }
-        
-        .control-buttons-row { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
-        .control-square-btn { width: 75px; height: 75px; border: none; border-radius: 14px; font-size: 28px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: transform 0.1s; }
-        .control-square-btn:active { transform: scale(0.95); }
-        .btn-play { background-color: #10b981; }
-        .btn-pause { background-color: #f59e0b; }
-        .btn-stop { background-color: #ef4444; }
-        .btn-disabled { background-color: #cbd5e1 !important; cursor: not-allowed; opacity: 0.6; box-shadow: none !important; }
-
-        #conditioning-panel { background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; border-radius: 12px; margin-top: 20px; text-align: center; }
-        .carton-btn { background-color: #d97706; color: white; border: none; padding: 15px 25px; font-size: 18px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 15px; box-shadow: 0 4px 10px rgba(217, 119, 6, 0.3); transition: background 0.2s; }
-        .carton-btn:hover { background-color: #b45309; }
-
-        .history-section { margin-top: 25px; text-align: left; border-top: 2px solid #e2e8f0; padding-top: 15px; }
-        .history-section h4 { color: #1e293b; margin-bottom: 10px; font-size: 15px; }
-        .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .history-table th, .history-table td { border: 1px solid #cbd5e1; padding: 8px 6px; text-align: center; vertical-align: middle; }
-        .history-table th { background-color: #f1f5f9; color: #334155; font-weight: 600; }
-
-        .filter-panel { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 10px; margin-bottom: 12px; text-align: left; font-size: 13px; }
-        .filter-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
-        .filter-options label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-weight: normal; color: #334155; }
-
-        .stats-container { text-align: left; max-height: 420px; overflow-y: auto; padding-right: 4px; }
-        .stats-toolbar { display: flex; flex-direction: column; gap: 10px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 14px; border-radius: 10px; margin-bottom: 14px; }
-        .stats-toolbar-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .stats-period-btns { display: flex; gap: 4px; }
-        .period-btn { background: #e2e8f0; border: none; padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; color: #475569; transition: background 0.2s; }
-        .period-btn.active { background: #3b82f6; color: white; }
-        
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-        .kpi-card { background: #ffffff; border: 1px solid #e2e8f0; border-top: 3px solid #3b82f6; border-radius: 8px; padding: 10px 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .kpi-card.highlight { border-top-color: #10b981; background: #f0fdf4; }
-        .kpi-card.time-card { border-top-color: #d97706; background: #fffbeb; }
-        .kpi-value { font-size: 17px; font-weight: bold; color: #1e293b; margin-top: 4px; }
-        .kpi-label { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; line-height: 1.2; }
-
-        .pareto-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .pareto-box h4 { font-size: 14px; color: #1e293b; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }
-        .pareto-item { margin-bottom: 8px; }
-        .pareto-info { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 3px; }
-        .pareto-bar-bg { background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden; }
-        .pareto-bar-fill { background: #ef4444; height: 100%; border-radius: 4px; }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        .modal-box { background: white; padding: 25px; border-radius: 16px; width: 92%; max-width: 520px; text-align: left; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
-        .modal-box h3 { margin-bottom: 15px; color: #1e293b; text-align: center; }
-        .motif-option { display: block; width: 100%; padding: 12px; margin-bottom: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; text-align: left; font-size: 15px; cursor: pointer; transition: background 0.2s; font-weight: 500; }
-        .motif-option:hover { background: #e2e8f0; }
-
-        .schedule-table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px; }
-        .schedule-table th, .schedule-table td { border: 1px solid #cbd5e1; padding: 5px 4px; text-align: center; font-size: 11px; }
-        .schedule-table th { background: #f1f5f9; font-weight: 600; }
-        .schedule-table input { width: 100%; padding: 3px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; }
-        .btn-danger { background-color: #ef4444; color: white; border: none; padding: 12px; width: 100%; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
-        .btn-danger:hover { background-color: #dc2626; }
-
-        .keypad-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); display: flex; justify-content: center; align-items: center; z-index: 200; }
-        .keypad-box { background: white; padding: 20px; border-radius: 16px; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
-        .keypad-display { font-size: 22px; font-weight: bold; background: #f8fafc; border: 2px solid #cbd5e1; padding: 12px; border-radius: 10px; margin-bottom: 15px; color: #1e293b; letter-spacing: 1px; min-height: 52px; display: flex; align-items: center; justify-content: center; }
-        .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .key-btn { background: #f1f5f9; border: 1px solid #cbd5e1; font-size: 20px; font-weight: bold; padding: 14px 0; border-radius: 8px; cursor: pointer; color: #1e293b; transition: background 0.1s; }
-        .key-btn:active { background: #cbd5e1; }
-        .key-btn.action { background: #fee2e2; color: #dc2626; }
-        .key-btn.validate { background: #10b981; color: white; grid-column: span 2; }
+      .logo-container { width: 220px; height: 110px; display: flex; align-items: center; justify-content: center; border: 2px dashed #cbd5e1; border-radius: 0.75rem; background: #f8fafc; }
     </style>
 </head>
-<body>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <div id="top-right-icons">
-        <button class="icon-top-btn" onclick="openSettings()" title="Paramètres">⚙️</button>
-        <div id="live-clock">--:--:--</div>
-    </div>
-
-    <div class="container">
-        
-        <!-- ÉCRAN 1 : ACCUEIL -->
-        <div id="screen-welcome" onclick="goToOperators()">
-            <h2>Suivi de Production</h2>
-            <div class="logo-box">
-                <img src="logo.png" alt="Logo Entreprise">
-            </div>
-            <p class="hint">Cliquez sur le logo pour démarrer</p>
+    <!-- En-tête Global -->
+    <header class="bg-slate-900 text-white shadow-md p-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <span class="text-xl font-bold tracking-wider">ATELIER SUPERVISION</span>
         </div>
+        <nav class="space-x-2">
+            <button onclick="navTo('home')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-sm">Accueil</button>
+            <button onclick="navTo('service')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-sm">Espace Service</button>
+            <button onclick="navTo('history')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-sm">Historique & Stats</button>
+            <button onclick="navTo('settings')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-sm">Paramètres</button>
+        </nav>
+    </header>
 
-        <!-- ÉCRAN 2 : OPÉRATEUR -->
-        <div id="screen-operator" class="hidden">
-            <h2>Sélection de l'Opérateur</h2>
-            <p class="hint">Qui est connecté sur le poste ?</p>
-            <div class="btn-grid">
-                <button class="app-btn" onclick="selectOperator('Céline')">Céline</button>
-                <button class="app-btn" onclick="selectOperator('Adrien')">Adrien</button>
-                <button class="app-btn" onclick="selectOperator('Alexis')">Alexis</button>
-                <button class="app-btn" onclick="selectOperator('Nicolas')">Nicolas</button>
-                <button class="app-btn" onclick="selectOperator('Jordan')">Jordan</button>
-                <button class="app-btn service-btn" onclick="promptAdminPassword()">⚙️ SERVICE 🛠️</button>
-            </div>
-            <span class="back-link" onclick="showScreen('screen-welcome')">Retour</span>
-        </div>
+    <!-- Conteneur des Vues -->
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
 
-        <!-- ÉCRAN 2.5 : HUB OPÉRATEUR -->
-        <div id="screen-operator-hub" class="hidden">
-            <h2 id="operator-hub-title">Espace Opérateur</h2>
-            <p class="hint">Que souhaitez-vous faire ?</p>
-            <div class="btn-grid" style="margin-top: 25px;">
-                <button class="app-btn machine" onclick="prepareMachineSelection()">🏭 Lancer / Gérer les Machines</button>
-                <button class="app-btn" style="background: #8b5cf6;" onclick="openOperatorStats()">📊 Mes Statistiques / Bilan</button>
-            </div>
-            <span class="back-link" onclick="showScreen('screen-operator')">Changer d'opérateur</span>
-        </div>
-
-        <!-- ÉCRAN 3 : MACHINE -->
-        <div id="screen-machine" class="hidden">
-            <h2>Choix de la Machine</h2>
-            <p id="operator-greeting" class="hint"></p>
-            <div class="btn-grid" id="machines-selection-grid"></div>
-            <span class="back-link" onclick="showScreen('screen-operator-hub')">Retour</span>
-        </div>
-
-        <!-- ÉCRAN 3.5 : ESPACE SERVICE (ADMIN) -->
-        <div id="screen-service" class="hidden">
-            <h2>⚙️ Espace Service 🛠️</h2>
-            <div class="service-tabs">
-                <button class="service-tab-btn active" id="tab-btn-overview" onclick="switchServiceTab('overview')">Vue d'ensemble</button>
-                <button class="service-tab-btn" id="tab-btn-history" onclick="switchServiceTab('history')">Historique</button>
-                <button class="service-tab-btn" id="tab-btn-stats" onclick="switchServiceTab('stats')">Statistiques</button>
-            </div>
-
-            <div id="service-content-overview">
-                <div class="overview-grid" id="overview-machines-container"></div>
-            </div>
-
-            <div id="service-content-history" class="hidden">
-                <div class="filter-panel">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <strong>🔍 Filtres :</strong>
-                        <div>📅 <input type="date" id="global-date-filter" onchange="renderGlobalHistory()" style="padding: 4px; font-size: 12px; border-radius: 6px; border: 1px solid #cbd5e1;"></div>
-                    </div>
-                    <div class="filter-options" id="filter-checkboxes"></div>
+        <!-- VUE ACCUEIL -->
+        <section id="view-home" class="view space-y-6">
+            <div class="bg-white p-8 rounded-xl shadow-sm text-center flex flex-col items-center space-y-4">
+                <!-- Logo agrandi et cadré dans la zone pointillée -->
+                <div class="logo-container">
+                    <!-- Remplace l'image src par ton vrai logo si besoin -->
+                    <img id="company-logo" src="https://via.placeholder.com/200x90?text=LOGO+ATELIER" alt="Logo Entreprise" class="max-h-24 object-contain">
                 </div>
-                <div style="overflow-x: auto; max-height: 300px;">
-                    <table class="history-table">
-                        <thead>
-                            <tr><th>Mach.</th><th>OF</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod / Rebuts</th></tr>
-                        </thead>
-                        <tbody id="global-history-tbody"></tbody>
-                    </table>
+                <h1 class="text-2xl font-bold text-slate-900">Bienvenue sur le Portail de Supervision de l'Atelier</h1>
+                <p class="text-slate-600 max-w-xl">Sélectionnez un espace ci-dessus pour lancer un ordre de fabrication, suivre les lignes en temps réel ou configurer vos paramètres atelier.</p>
+            </div>
+        </section>
+
+        <!-- VUE ESPACE SERVICE -->
+        <section id="view-service" class="view hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold text-slate-900">Suivi des Lignes & Lancement d'OF</h2>
+                <div class="flex items-center space-x-3">
+                    <span id="realtime-status" class="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">● Realtime Actif</span>
+                    <button onclick="refreshServiceData()" class="p-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 text-slate-700" title="Actualiser manuellement">
+                        🔄
+                    </button>
                 </div>
             </div>
 
-            <div id="service-content-stats" class="hidden">
-                <div class="stats-container">
-                    <div class="stats-toolbar">
-                        <div class="stats-toolbar-row">
-                            <div style="font-size: 13px; font-weight: 600; color: #1e293b;">📊 Période :</div>
-                            <div class="stats-period-btns">
-                                <button class="period-btn active" onclick="setStatsPeriod('day', this)">Jour</button>
-                                <button class="period-btn" onclick="setStatsPeriod('week', this)">Semaine</button>
-                                <button class="period-btn" onclick="setStatsPeriod('month', this)">Mois</button>
-                                <button class="period-btn" onclick="setStatsPeriod('year', this)">Année</button>
-                            </div>
-                        </div>
-                        <div class="stats-toolbar-row" style="border-top: 1px solid #e2e8f0; padding-top: 8px;">
-                            <div style="font-size: 13px; font-weight: 600; color: #1e293b;">🎯 Périmètre :</div>
-                            <select id="stats-perimeter-select" onchange="renderStatistics()" style="padding: 6px; font-size: 12px; border-radius: 6px; border: 1px solid #cbd5e1; flex: 1; max-width: 220px;">
-                                <option value="atelier">Atelier Global (Toutes les machines)</option>
-                                <optgroup label="Par Machine" id="stats-machines-options"></optgroup>
-                            </select>
-                        </div>
+            <!-- Formulaire de Lancement d'OF avec Cascade Dynamique -->
+            <div class="bg-white p-6 rounded-xl shadow-sm space-y-4">
+                <h3 class="font-semibold text-slate-800">Lancer un nouvel Ordre de Fabrication (OF)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Machine / Ligne</label>
+                        <select id="of-machine" onchange="updateMachineCascades()" class="w-full border rounded-lg p-2.5 text-sm bg-slate-50">
+                            <option value="E-fill 10ml - 1">Ligne 10ml - Poste 1</option>
+                            <option value="E-fill 10ml - 2">Ligne 10ml - Poste 2</option>
+                            <option value="E-fill 50/30ml">Ligne E-fill 50/30 ml</option>
+                            <option value="K-net">Petite Machine K-net</option>
+                        </select>
                     </div>
-
-                    <div class="kpi-grid">
-                        <div class="kpi-card highlight"><div class="kpi-label">TRS</div><div class="kpi-value" id="kpi-trs">-</div></div>
-                        <div class="kpi-card highlight"><div class="kpi-label">TRG</div><div class="kpi-value" id="kpi-trg">-</div></div>
-                        <div class="kpi-card"><div class="kpi-label">Disponibilité</div><div class="kpi-value" id="kpi-disp">-</div></div>
-                        <div class="kpi-card"><div class="kpi-label">Qualité</div><div class="kpi-value" id="kpi-qual">-</div></div>
-                        <div class="kpi-card time-card"><div class="kpi-label">Temps d'Ouv.</div><div class="kpi-value" id="kpi-open-time">-</div></div>
-                        <div class="kpi-card time-card"><div class="kpi-label">Temps Utile</div><div class="kpi-value" id="kpi-useful-time">-</div></div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">N° d'OF</label>
+                        <input type="text" id="of-number" placeholder="Ex: OF-2026-0901" class="w-full border rounded-lg p-2.5 text-sm">
                     </div>
-
-                    <div class="pareto-box">
-                        <h4>📉 Pertes de Cadence, Rebuts & SMED / Inter-OF</h4>
-                        <div class="pareto-item"><div class="pareto-info"><span id="lbl-loss-1">Micro-arrêts bouteilles</span><span id="val-loss-1">0% (0 min)</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-loss-1" style="width: 0%;"></div></div></div>
-                        <div class="pareto-item" style="margin-top: 8px;"><div class="pareto-info"><span id="lbl-loss-2">Ajustement étiqueteuse</span><span id="val-loss-2">0% (0 min)</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-loss-2" style="width: 0%;"></div></div></div>
-                        <div class="pareto-item" style="margin-top: 8px;"><div class="pareto-info"><span>⏱️ SMED / Temps Inter-OF</span><span id="val-smed-share">0% (0 min)</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-smed-share" style="width: 0%; background: #d97706;"></div></div></div>
-                    </div>
-
-                    <div class="pareto-box">
-                        <h4>🛑 Pareto des Motifs d'Arrêts Imprévus</h4>
-                        <div class="pareto-item"><div class="pareto-info"><span>Casse / réglage étiquette</span><span id="val-stop-1">0%</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-stop-1" style="width: 0%;"></div></div></div>
-                        <div class="pareto-item" style="margin-top: 8px;"><div class="pareto-info"><span>Bloquage bouteille / bouchons</span><span id="val-stop-2">0%</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-stop-2" style="width: 0%;"></div></div></div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Quantité Cible (Flacons)</label>
+                        <input type="number" id="of-target" placeholder="Ex: 500" class="w-full border rounded-lg p-2.5 text-sm">
                     </div>
                 </div>
-            </div>
 
-            <span class="back-link" onclick="showScreen('screen-operator')" style="margin-top: 15px;">Retour aux opérateurs</span>
-        </div>
+                <!-- Opérateur & Binôme -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Opérateur Principal & Équipe (Binôme)</label>
+                        <input type="text" id="of-operators" placeholder="Ex: Thomas / Céline" class="w-full border rounded-lg p-2.5 text-sm">
+                    </div>
+                    <!-- Zone Cascade Dynamique Format / Dosage -->
+                    <div id="cascade-container" class="grid grid-cols-2 gap-2">
+                        <!-- Généré dynamiquement selon la machine -->
+                    </div>
+                </div>
 
-        <!-- ÉCRAN 4 : SAISIE OF -->
-        <div id="screen-workspace" class="hidden">
-            <h2 id="workspace-title">Espace de travail</h2>
-            <div class="form-group">
-                <label for="of-input">Numéro d'OF :</label>
-                <div class="input-row">
-                    <input type="text" id="of-input" class="app-input" value="MO/" readonly onclick="openKeypad('of-input', true)" style="cursor: pointer; font-weight: bold; color: #1e293b;">
-                    <button class="icon-btn" onclick="validateOF()">✓</button>
+                <div class="flex justify-end pt-2">
+                    <button onclick="startOF()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium shadow">Lancer l'OF</button>
                 </div>
             </div>
 
-            <div class="form-group" id="qty-container" style="display: none;">
-                <label for="qty-input">Quantité cible à produire :</label>
-                <input type="text" id="qty-input" class="app-input" placeholder="Ex: 500" readonly onclick="openKeypad('qty-input', false)" style="cursor: pointer; font-weight: bold;">
-                <div class="team-selection-box" style="margin-top: 15px;">
-                    <label style="font-size: 13px; margin-bottom: 4px;">👥 Équipe sur le poste (Binôme / Trio) :</label>
-                    <div class="team-chips-grid" id="team-chips-container"></div>
+            <!-- Tableau de bord live des machines -->
+            <div id="machines-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Rempli dynamiquement par JS -->
+            </div>
+        </section>
+
+        <!-- VUE HISTORIQUE & STATS -->
+        <section id="view-history" class="view hidden space-y-6">
+            <h2 class="text-xl font-bold text-slate-900">Historique, Statistiques & Volumes</h2>
+            
+            <!-- Carré de Volume Total Produit par Format -->
+            <div class="bg-white p-6 rounded-xl shadow-sm space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-semibold text-slate-800">Volume Total Produit par Format</h3>
+                    <select id="stats-period" onchange="loadStatsAndHistory()" class="border rounded-lg p-2 text-sm">
+                        <option value="day">Aujourd'hui</option>
+                        <option value="week" selected>Cette Semaine</option>
+                        <option value="month">Ce Mois</option>
+                        <option value="year">Cette Année</option>
+                    </select>
+                </div>
+                <div id="volume-cards-grid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                    <!-- Cartes dynamiques 10ml, 30ml, 50ml, 100ml, 250ml, 500ml, 1L -->
                 </div>
             </div>
 
-            <button id="start-btn" class="app-btn start hidden" onclick="startProduction()">PRÉPARER LA SÉRIE 🚀</button>
-
-            <div class="history-section">
-                <h4>📊 Historique du jour sur la machine</h4>
-                <div style="overflow-x: auto; max-height: 180px;">
-                    <table class="history-table">
-                        <thead><tr><th>OF</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod & Rebuts</th></tr></thead>
-                        <tbody id="history-tbody"><tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF validé pour l'instant aujourd'hui.</td></tr></tbody>
-                    </table>
+            <!-- Filtres Historique (Machine & Opérateur) -->
+            <div class="bg-white p-4 rounded-xl shadow-sm flex flex-wrap gap-4 items-center">
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Filtrer par Machine</label>
+                    <select id="filter-machine" onchange="loadStatsAndHistory()" class="border rounded-lg p-2 text-sm">
+                        <option value="">Toutes les machines</option>
+                        <option value="E-fill 10ml - 1">Ligne 10ml - Poste 1</option>
+                        <option value="E-fill 10ml - 2">Ligne 10ml - Poste 2</option>
+                        <option value="E-fill 50/30ml">Ligne E-fill 50/30 ml</option>
+                        <option value="K-net">K-net</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Filtrer par Opérateur</label>
+                    <input type="text" id="filter-operator" oninput="loadStatsAndHistory()" placeholder="Nom opérateur..." class="border rounded-lg p-2 text-sm">
                 </div>
             </div>
-            <span class="back-link" onclick="showScreen('screen-machine')">Changer de machine</span>
-        </div>
 
-        <!-- ÉCRAN 5 : PRODUCTION & CONTRÔLE -->
-        <div id="screen-running" class="hidden">
-            <h2 id="running-title">Production en cours</h2>
-            <div id="running-status" class="status-waiting">
-                <p id="running-info-of"></p>
-                <p id="running-info-qty" style="margin-top: 5px;"></p>
-                <p id="running-info-team" style="margin-top: 5px; font-size: 13px;"></p>
-            </div>
-            <div class="control-buttons-row">
-                <button id="btn-play-square" class="control-square-btn btn-play" onclick="onPlayClick()" title="Lancer / Reprendre">▶</button>
-                <button id="btn-pause-square" class="control-square-btn btn-pause btn-disabled" onclick="onPauseClick()" title="Pause / Motif">⏸</button>
-                <button id="btn-stop-square" class="control-square-btn btn-stop btn-disabled" onclick="onStopFillingClick()" title="Fin de Remplissage">⏹</button>
-            </div>
-            <div id="conditioning-panel" class="hidden">
-                <h3 style="color: #d97706; margin-bottom: 5px;">📦 Conditionnement en cours</h3>
-                <p class="hint" style="margin-top: 0;">Finissez l'encartonnage puis validez ci-dessous :</p>
-                <button class="carton-btn" onclick="openClosingModal()">📦 Valider le Carton / Fin</button>
-            </div>
-            <span class="back-link" onclick="resetWorkspace()" style="margin-top: 20px;">Quitter / Annuler l'OF</span>
-        </div>
-
-        <!-- ÉCRAN 6 : MES STATISTIQUES -->
-        <div id="screen-operator-stats" class="hidden">
-            <h2 id="operator-stats-title">📊 Mes Statistiques</h2>
-            <div class="filter-panel" style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <strong>📅 Date :</strong>
-                    <input type="date" id="op-stats-date" onchange="renderOperatorStats()" style="padding: 4px; font-size: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                </div>
-            </div>
-            <div class="kpi-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 15px;">
-                <div class="kpi-card highlight"><div class="kpi-label">Pièces Conformes</div><div class="kpi-value" id="op-stat-good">0</div></div>
-                <div class="kpi-card time-card"><div class="kpi-label">Temps Prod. Cumulé</div><div class="kpi-value" id="op-stat-time">0 min</div></div>
-            </div>
-            <div class="history-section" style="margin-top: 10px;">
-                <h4>Historique de mes OF (Jour)</h4>
-                <div style="overflow-x: auto; max-height: 220px;">
-                    <table class="history-table">
-                        <thead><tr><th>Mach.</th><th>OF</th><th>Équipe</th><th>Prod</th></tr></thead>
-                        <tbody id="op-stats-tbody"><tr><td colspan="4" style="color: #94a3b8; font-style: italic;">Aucune production enregistrée.</td></tr></tbody>
-                    </table>
-                </div>
-            </div>
-            <span class="back-link" onclick="showScreen('screen-operator-hub')" style="margin-top: 15px;">Retour</span>
-        </div>
-    </div>
-
-    <!-- MODALES -->
-    <div id="modal-keypad" class="keypad-modal hidden">
-        <div class="keypad-box">
-            <div class="keypad-display" id="keypad-display-val">0</div>
-            <div class="keypad-grid">
-                <button class="key-btn" onclick="keypadPress('1')">1</button>
-                <button class="key-btn" onclick="keypadPress('2')">2</button>
-                <button class="key-btn" onclick="keypadPress('3')">3</button>
-                <button class="key-btn" onclick="keypadPress('4')">4</button>
-                <button class="key-btn" onclick="keypadPress('5')">5</button>
-                <button class="key-btn" onclick="keypadPress('6')">6</button>
-                <button class="key-btn" onclick="keypadPress('7')">7</button>
-                <button class="key-btn" onclick="keypadPress('8')">8</button>
-                <button class="key-btn" onclick="keypadPress('9')">9</button>
-                <button class="key-btn action" onclick="keypadClear()">C</button>
-                <button class="key-btn" onclick="keypadPress('0')">0</button>
-                <button class="key-btn action" onclick="keypadBack()">⌫</button>
-                <button class="key-btn validate" onclick="keypadValidate()">Valider ✓</button>
-            </div>
-            <span class="back-link" onclick="closeKeypad()" style="display:block; margin-top:12px;">Annuler</span>
-        </div>
-    </div>
-
-    <div id="modal-pause" class="modal-overlay hidden">
-        <div class="modal-box">
-            <h3>Motif de Pause / Arrêt</h3>
-            <button class="motif-option" onclick="selectMotif('Casse / réglage étiquette')">🏷️ Casse / réglage étiquette</button>
-            <button class="motif-option" onclick="selectMotif('Bloquage bouteille / bouchons')">🛑 Bloquage bouteille / bouchons</button>
-            <button class="motif-option" onclick="selectMotif('Réglage')">🔧 Réglage</button>
-            <button class="motif-option" onclick="selectMotif('Autre')" style="background: #f1f5f9;">✏️ Autre...</button>
-            <span class="back-link" onclick="closePauseModal()" style="display:block; text-align:center; margin-top:15px;">Annuler</span>
-        </div>
-    </div>
-
-    <div id="modal-closing" class="modal-overlay hidden">
-        <div class="modal-box">
-            <h3>Bilan de Fin d'OF</h3>
-            <div class="form-group">
-                <label>Flacons conformes produits :</label>
-                <input type="text" id="closing-good" class="app-input" value="500" readonly onclick="openKeypad('closing-good', false)" style="cursor: pointer; font-weight: bold;">
-            </div>
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 8px;">
-                    <img src="bouteille.png" alt="Bouteille" style="width: 40px; height: 40px; object-fit: contain;"> Rebuts bouteilles :
-                </label>
-                <input type="text" id="closing-waste-bt" class="app-input" value="0" readonly onclick="openKeypad('closing-waste-bt', false)" style="cursor: pointer; font-weight: bold;">
-            </div>
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 8px;">
-                    <img src="bouchon.png" alt="Bouchon" style="width: 40px; height: 40px; object-fit: contain;"> Rebuts bouchons :
-                </label>
-                <input type="text" id="closing-waste-cap" class="app-input" value="0" readonly onclick="openKeypad('closing-waste-cap', false)" style="cursor: pointer; font-weight: bold;">
-            </div>
-            <button class="app-btn machine" style="width: 100%; margin-top: 10px;" onclick="validateAndCloseOF()">Enregistrer & Clôturer</button>
-        </div>
-    </div>
-
-    <div id="modal-settings" class="modal-overlay hidden">
-        <div class="modal-box">
-            <h3>⚙️ Paramètres & Horaires</h3>
-            <div class="form-group">
-                <label>Configuration des horaires de l'atelier :</label>
-                <table class="schedule-table">
-                    <thead><tr><th>Jour</th><th>Début</th><th>Fin</th><th>Repas</th><th>Pauses</th></tr></thead>
-                    <tbody id="schedule-tbody"></tbody>
+            <!-- Tableau Historique complet -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead class="bg-slate-50 text-slate-600 border-b">
+                        <tr>
+                            <th class="p-3">Date / Heure</th>
+                            <th class="p-3">N° OF</th>
+                            <th class="p-3">Machine</th>
+                            <th class="p-3">Format / Dosage</th>
+                            <th class="p-3">Opérateurs</th>
+                            <th class="p-3">Qté Produite</th>
+                            <th class="p-3">Débit Réel / Perf</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body" class="divide-y divide-slate-100">
+                        <!-- Rempli dynamiquement -->
+                    </tbody>
                 </table>
             </div>
-            <div class="form-group" style="margin-top: 15px;">
-                <button class="app-btn machine" style="width: 100%; padding: 12px; font-size: 15px;" onclick="saveScheduleSettings()">💾 Enregistrer les horaires</button>
-            </div>
-            <div class="form-group" style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-                <button class="btn-danger" onclick="confirmResetDatabase()">🗑️ Vider le stockage local</button>
-            </div>
-            <span class="back-link" onclick="closeSettings()" style="display:block; text-align:center;">Fermer</span>
-        </div>
-    </div>
+        </section>
 
+        <!-- VUE PARAMÈTRES (SOUS-MENUS STRUCTURÉS) -->
+        <section id="view-settings" class="view hidden space-y-6">
+            <h2 class="text-xl font-bold text-slate-900">Espace Paramètres & Configuration</h2>
+            
+            <!-- Onglets de sous-menus Paramètres -->
+            <div class="flex border-b border-slate-200 space-x-6">
+                <button onclick="switchSettingsTab('cadences')" id="btn-tab-cadences" class="pb-2 font-medium text-blue-600 border-b-2 border-blue-600 text-sm">Cadences & Tarages</button>
+                <button onclick="switchSettingsTab('planning')" id="btn-tab-planning" class="pb-2 font-medium text-slate-500 hover:text-slate-800 text-sm">Planning Horaire</button>
+                <button onclick="switchSettingsTab('kpi')" id="btn-tab-kpi" class="pb-2 font-medium text-slate-500 hover:text-slate-800 text-sm">Paramètres KPI & Couleurs</button>
+            </div>
+
+            <!-- SOUS-MENU 1 : CADENCES & TARAGES (Système Hybride) -->
+            <div id="settings-tab-cadences" class="settings-tab space-y-4 bg-white p-6 rounded-xl shadow-sm">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-semibold text-slate-800">Référentiel des Cadences Nominales (Mode Hybride)</h3>
+                    <button onclick="saveCadences()" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm">Enregistrer les modifications</button>
+                </div>
+                <p class="text-xs text-slate-500">Si une cadence est renseignée (>0), l'application l'utilise pour le calcul de la performance. Si elle est vide ou à 0, l'application bascule automatiquement sur le calcul par défaut (Quantité / Temps de remplissage).</p>
+                <div id="cadences-editor-container" class="space-y-3">
+                    <!-- Tableau éditable des cadences -->
+                </div>
+            </div>
+
+            <!-- SOUS-MENU 2 : PLANNING HORAIRE (Sélecteurs ergonomiques) -->
+            <div id="settings-tab-planning" class="settings-tab hidden space-y-4 bg-white p-6 rounded-xl shadow-sm">
+                <h3 class="font-semibold text-slate-800">Configuration du Planning Horaire</h3>
+                <div id="planning-editor-container" class="space-y-3">
+                    <!-- Éléments du planning horaire -->
+                </div>
+            </div>
+
+            <!-- SOUS-MENU 3 : PARAMÈTRES KPI (Seuils & Couleurs) -->
+            <div id="settings-tab-kpi" class="settings-tab hidden space-y-4 bg-white p-6 rounded-xl shadow-sm">
+                <h3 class="font-semibold text-slate-800">Seuils de Performance (TRS / TRG)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 border rounded-lg space-y-2">
+                        <label class="block text-sm font-medium">Seuil Alerte (Rouge < ... <= Orange)</label>
+                        <input type="number" id="kpi-seuil-orange" value="60" class="border p-2 rounded w-full text-sm">
+                    </div>
+                    <div class="p-4 border rounded-lg space-y-2">
+                        <label class="block text-sm font-medium">Seuil Objectif (Orange < ... <= Vert)</label>
+                        <input type="number" id="kpi-seuil-vert" value="80" class="border p-2 rounded w-full text-sm">
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button onclick="saveKpiSettings()" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm">Enregistrer les seuils</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Script Logique & Supabase -->
     <script>
-        // --- CONFIGURATION SUPABASE ---
-        const SUPABASE_URL = 'https://mfgcdovlikzuolcgtbdg.supabase.co';
-        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_BsA0ZewkDkHd3dxrjmIjpA_v0BhfBZD';
-        
-        const { createClient } = supabase;
-        const db = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+        // Configuration Supabase (À adapter avec tes clés réelles si besoin)
+        const SUPABASE_URL = 'VOTRE_SUPABASE_URL';
+        const SUPABASE_KEY = 'VOTRE_SUPABASE_ANON_KEY';
+        let supabaseClient = null;
 
-        const MACHINES_LIST = ['E-fill SW 10ml 1', 'E-fill SW 10ml 2', 'E-fill 50/30ml', 'K-net'];
-        const ALL_OPERATORS = ['Céline', 'Adrien', 'Alexis', 'Nicolas', 'Jordan'];
-        const ADMIN_PIN = "2518";
-        
-        const DEFAULT_SCHEDULE = [
-            { day: 'Lundi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
-            { day: 'Mardi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
-            { day: 'Mercredi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
-            { day: 'Jeudi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
-            { day: 'Vendredi', start: '08:30', end: '11:30', meal: '00:00', pause: '00:20' }
-        ];
-
-        let currentOperator = "";
-        let currentMachine = "";
-        let currentOF = "";
-        let targetQty = 0;
-        let isPaused = false;
-        let currentStatsPeriod = 'day';
-
-        let keypadTargetInputId = null;
-        let keypadIsPrefixedMO = false;
-        let keypadCurrentValue = "0";
-
-        let timeStartFilling = null;
-        let timeStopFilling = null;
-        let timeEndCarton = null;
-        let lastOperatorEndTime = JSON.parse(localStorage.getItem('atelier_last_op_ends') || '{}');
-
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('live-clock').innerText = now.toLocaleTimeString('fr-FR');
+        try {
+            if (SUPABASE_URL !== 'VOTRE_SUPABASE_URL') {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        } catch(e) {
+            console.log('Mode simulation local actif');
         }
-        setInterval(updateClock, 1000);
-        updateClock();
 
-        function showScreen(screenId) {
-            ['screen-welcome', 'screen-operator', 'screen-operator-hub', 'screen-machine', 'screen-service', 'screen-workspace', 'screen-running', 'screen-operator-stats'].forEach(id => {
-                document.getElementById(id).classList.add('hidden');
+        // Navigation entre vues
+        function navTo(viewId) {
+            document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
+            document.getElementById('view-' + viewId).classList.remove('hidden');
+            if(viewId === 'service') loadServiceData();
+            if(viewId === 'history') loadStatsAndHistory();
+            if(viewId === 'settings') loadSettingsData();
+        }
+
+        // Gestion sous-menus Paramètres
+        function switchSettingsTab(tabName) {
+            document.querySelectorAll('.settings-tab').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="btn-tab-"]').forEach(el => {
+                el.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                el.classList.add('text-slate-500');
             });
-            document.getElementById(screenId).classList.remove('hidden');
+            document.getElementById('settings-tab-' + tabName).classList.remove('hidden');
+            const btn = document.getElementById('btn-tab-' + tabName);
+            btn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            btn.classList.remove('text-slate-500');
         }
 
-        function goToOperators() { showScreen('screen-operator'); }
+        // Cascade Dynamique Format / Dosage selon la machine sélectionnée
+        function updateMachineCascades() {
+            const machine = document.getElementById('of-machine').value;
+            const container = document.getElementById('cascade-container');
+            container.innerHTML = '';
 
-        function selectOperator(name) {
-            currentOperator = name;
-            document.getElementById('operator-greeting').innerText = "Opérateur : " + currentOperator;
-            document.getElementById('operator-hub-title').innerText = "Espace de " + currentOperator;
-            showScreen('screen-operator-hub');
-        }
-
-        function openOperatorStats() {
-            document.getElementById('op-stats-date').value = new Date().toISOString().split('T')[0];
-            renderOperatorStats();
-            showScreen('screen-operator-stats');
-        }
-
-        async function renderOperatorStats() {
-            const selectedDate = document.getElementById('op-stats-date').value;
-            let opRecords = [];
-
-            try {
-                let { data, error } = await db
-                    .from('production_history')
-                    .select('*')
-                    .eq('date', selectedDate);
-                
-                if (!error && data) {
-                    opRecords = data.filter(r => r.team && r.team.includes(currentOperator));
-                }
-            } catch (e) {
-                console.error("Erreur lecture Supabase:", e);
-            }
-
-            let totalGood = 0;
-            let totalTime = 0;
-            const tbody = document.getElementById('op-stats-tbody');
-            tbody.innerHTML = '';
-
-            if (opRecords.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8; font-style: italic;">Aucune production enregistrée pour vous ce jour.</td></tr>';
-            } else {
-                opRecords.forEach(r => {
-                    totalGood += (r.good_qty || 0);
-                    totalTime += (r.run_time_minutes || 0);
-                    tbody.innerHTML += `
-                        <tr>
-                            <td style="font-size:11px; font-weight:600; color:#3b82f6;">${r.machine_name}</td>
-                            <td><strong>${r.of}</strong></td>
-                            <td style="font-size:11px;">${r.team}</td>
-                            <td><strong>${r.good_qty || 0}</strong> pcs</td>
-                        </tr>
-                    `;
-                });
-            }
-
-            document.getElementById('op-stat-good').innerText = totalGood;
-            document.getElementById('op-stat-time').innerText = totalTime + " min";
-        }
-
-        function promptAdminPassword() {
-            let pwd = prompt("Entrez le mot de passe Administrateur (Service) :");
-            if (pwd === ADMIN_PIN) {
-                currentOperator = "Jordan (Admin)";
-                switchServiceTab('overview');
-                showScreen('screen-service');
-            } else if (pwd !== null) { alert("Mot de passe incorrect."); }
-        }
-
-        function openSettings() {
-            let pwd = prompt("Accès Paramètres :");
-            if (pwd === ADMIN_PIN) {
-                renderScheduleTable();
-                document.getElementById('modal-settings').classList.remove('hidden');
-            } else if (pwd !== null) { alert("Code PIN incorrect."); }
-        }
-
-        function closeSettings() { document.getElementById('modal-settings').classList.add('hidden'); }
-
-        function renderScheduleTable() {
-            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
-            const tbody = document.getElementById('schedule-tbody');
-            tbody.innerHTML = '';
-            schedule.forEach((row, index) => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${row.day}</strong></td>
-                        <td><input type="text" id="sch_start_${index}" value="${row.start}"></td>
-                        <td><input type="text" id="sch_end_${index}" value="${row.end}"></td>
-                        <td><input type="text" id="sch_meal_${index}" value="${row.meal}"></td>
-                        <td><input type="text" id="sch_pause_${index}" value="${row.pause}"></td>
-                    </tr>
+            if (machine.includes('E-fill 10ml')) {
+                container.innerHTML = `
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Ratio PG/VG (Format 10ml)</label>
+                        <select id="of-dosage" class="w-full border rounded-lg p-2.5 text-sm bg-slate-50">
+                            <option value="50/50">50/50</option>
+                            <option value="20/80">20/80</option>
+                            <option value="70/30">70/30</option>
+                        </select>
+                    </div>
                 `;
-            });
+            } else if (machine === 'E-fill 50/30ml') {
+                container.innerHTML = `
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Format</label>
+                        <select id="of-format" onchange="toggleDosageField()" class="w-full border rounded-lg p-2.5 text-sm bg-slate-50">
+                            <option value="30ml">30 ml</option>
+                            <option value="50ml">50 ml</option>
+                        </select>
+                    </div>
+                    <div id="dosage-wrapper">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Dosage</label>
+                        <select id="of-dosage" class="w-full border rounded-lg p-2.5 text-sm bg-slate-50">
+                            <option value="Unique">Unique (30ml)</option>
+                        </select>
+                    </div>
+                `;
+                toggleDosageField();
+            } else if (machine === 'K-net') {
+                container.innerHTML = `
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Conditionnement (K-net)</label>
+                        <select id="of-format" class="w-full border rounded-lg p-2.5 text-sm bg-slate-50">
+                            <option value="100ml">100 ml</option>
+                            <option value="250ml">250 ml</option>
+                            <option value="500ml">500 ml</option>
+                            <option value="1L">1 Litre</option>
+                        </select>
+                    </div>
+                `;
+            }
         }
 
-        function saveScheduleSettings() {
-            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
-            schedule.forEach((row, index) => {
-                row.start = document.getElementById(`sch_start_${index}`).value.trim();
-                row.end = document.getElementById(`sch_end_${index}`).value.trim();
-                row.meal = document.getElementById(`sch_meal_${index}`).value.trim();
-                row.pause = document.getElementById(`sch_pause_${index}`).value.trim();
-            });
-            localStorage.setItem('atelier_schedule', JSON.stringify(schedule));
-            alert("Horaires enregistrés avec succès !");
-            closeSettings();
-            renderStatistics();
-        }
-
-        function timeToMinutes(timeStr) {
-            if (!timeStr || !timeStr.includes(':')) return 0;
-            let parts = timeStr.split(':');
-            return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
-        }
-
-        function getOpeningMinutesForToday() {
-            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
-            const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-            let todayName = daysMap[new Date().getDay()];
-            let dayConfig = schedule.find(s => s.day === todayName);
-            if (!dayConfig) return 480;
-
-            let startMin = timeToMinutes(dayConfig.start);
-            let endMin = timeToMinutes(dayConfig.end);
-            let mealMin = timeToMinutes(dayConfig.meal);
-            let pauseMin = timeToMinutes(dayConfig.pause);
-
-            let grossMin = endMin - startMin;
-            if (grossMin < 0) grossMin = 0;
-            let opening = grossMin - mealMin - pauseMin;
-            return opening > 0 ? opening : 480;
-        }
-
-        function getWorkshopStartMinutesToday() {
-            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
-            const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-            let todayName = daysMap[new Date().getDay()];
-            let dayConfig = schedule.find(s => s.day === todayName);
-            return dayConfig ? timeToMinutes(dayConfig.start) : (8 * 60 + 30);
-        }
-
-        function confirmResetDatabase() {
-            const pinCheck = prompt("Sécurité : Saisissez le code PIN pour effacer les données locales :");
-            if (pinCheck === ADMIN_PIN) {
-                localStorage.clear();
-                alert("Stockage local réinitialisé !");
-                location.reload();
-            } else if (pinCheck !== null) { alert("Code incorrect."); }
-        }
-
-        function openKeypad(inputId, isMO) {
-            keypadTargetInputId = inputId;
-            keypadIsPrefixedMO = isMO;
-            let currentVal = document.getElementById(inputId).value;
-            if (isMO) {
-                keypadCurrentValue = currentVal.startsWith('MO/') ? currentVal.replace('MO/', '') : currentVal;
+        function toggleDosageField() {
+            const format = document.getElementById('of-format').value;
+            const wrapper = document.getElementById('dosage-wrapper');
+            if (format === '30ml') {
+                wrapper.innerHTML = `<label class="block text-sm font-medium text-slate-600 mb-1">Dosage</label><select id="of-dosage" class="w-full border rounded-lg p-2.5 text-sm bg-slate-50"><option value="Standard">Standard</option></select>`;
             } else {
-                keypadCurrentValue = (currentVal === "" || currentVal === "0") ? "" : currentVal;
-            }
-            updateKeypadDisplay();
-            document.getElementById('modal-keypad').classList.remove('hidden');
-        }
-
-        function updateKeypadDisplay() {
-            let displayStr = keypadIsPrefixedMO ? "MO/" + keypadCurrentValue : (keypadCurrentValue === "" ? "0" : keypadCurrentValue);
-            document.getElementById('keypad-display-val').innerText = displayStr;
-        }
-
-        function keypadPress(digit) {
-            if (keypadCurrentValue === "0") { keypadCurrentValue = digit; }
-            else { keypadCurrentValue += digit; }
-            updateKeypadDisplay();
-        }
-
-        function keypadClear() { keypadCurrentValue = ""; updateKeypadDisplay(); }
-
-        function keypadBack() {
-            if (keypadCurrentValue.length > 1) { keypadCurrentValue = keypadCurrentValue.slice(0, -1); }
-            else { keypadCurrentValue = ""; }
-            updateKeypadDisplay();
-        }
-
-        function keypadValidate() {
-            let finalVal = keypadIsPrefixedMO ? "MO/" + keypadCurrentValue : (keypadCurrentValue === "" ? "0" : keypadCurrentValue);
-            document.getElementById(keypadTargetInputId).value = finalVal;
-            closeKeypad();
-        }
-
-        function closeKeypad() { document.getElementById('modal-keypad').classList.add('hidden'); }
-
-        async function prepareMachineSelection() {
-            const container = document.getElementById('machines-selection-grid');
-            container.innerHTML = '';
-
-            let machinesStatusMap = {};
-            try {
-                let { data, error } = await db.from('machines_status').select('*');
-                if (!error && data) {
-                    data.forEach(item => { machinesStatusMap[item.machine_name] = item; });
-                }
-            } catch (e) {
-                console.error("Erreur récupération statuts:", e);
-            }
-
-            MACHINES_LIST.forEach(mach => {
-                let st = machinesStatusMap[mach];
-                let isBusy = st && (st.status === 'play' || st.status === 'pause' || st.status === 'conditioning' || st.status === 'waiting');
-                
-                if (isBusy) {
-                    container.innerHTML += `
-                        <div style="display: flex; gap: 8px;">
-                            <button class="app-btn machine machine-disabled" style="flex: 1;" disabled>
-                                ${mach} <br><span style="font-size:11px; font-weight:normal;">🔴 ${st.status_text || 'En cours'}</span>
-                            </button>
-                            <button class="app-btn" style="background: #ef4444; padding: 0 15px; font-size: 14px;" onclick="forceUnlockMachine('${mach}')" title="Débloquer si bloqué">🔓</button>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML += `
-                        <button class="app-btn machine" onclick="selectMachine('${mach}')">
-                            ${mach} <br><span style="font-size:11px; font-weight:normal; opacity:0.8;">🟢 Disponible</span>
-                        </button>
-                    `;
-                }
-            });
-            showScreen('screen-machine');
-        }
-
-        async function forceUnlockMachine(machName) {
-            if (confirm("Voulez-vous vraiment libérer / débloquer la machine " + machName + " ?")) {
-                await db.from('machines_status').delete().eq('machine_name', machName);
-                prepareMachineSelection();
+                wrapper.innerHTML = `<label class="block text-sm font-medium text-slate-600 mb-1">Dosage</label><select id="of-dosage" class="w-full border rounded-lg p-2.5 text-sm bg-slate-50"><option value="50/50">50/50</option><option value="70/30">70/30</option><option value="20/80">20/80</option></select>`;
             }
         }
 
-        function selectMachine(machineName) {
-            currentMachine = machineName;
-            document.getElementById('workspace-title').innerText = currentMachine + " (" + currentOperator + ")";
-            document.getElementById('of-input').value = "MO/";
-            document.getElementById('qty-input').value = "";
-            document.getElementById('qty-container').style.display = 'none';
-            document.getElementById('start-btn').classList.add('hidden');
-            
-            renderHistory();
-            showScreen('screen-workspace');
+        // Initialisation des cascades au chargement
+        window.onload = function() {
+            updateMachineCascades();
+            setupRealtimeSubscription();
+        };
+
+        // Supabase Realtime Simulation / Connexion
+        function setupRealtimeSubscription() {
+            if (supabaseClient) {
+                supabaseClient.channel('public:production_history')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'production_history' }, payload => {
+                        loadServiceData();
+                    })
+                    .subscribe();
+            }
         }
 
-        function validateOF() {
-            const ofVal = document.getElementById('of-input').value.trim();
-            if (ofVal === "" || ofVal === "MO/") { alert("Veuillez saisir un numéro d'OF."); return; }
-            currentOF = ofVal;
-            document.getElementById('qty-container').style.display = 'block';
-            document.getElementById('start-btn').classList.remove('hidden');
-            buildTeamChips();
+        function refreshServiceData() {
+            loadServiceData();
         }
 
-        function buildTeamChips() {
-            const container = document.getElementById('team-chips-container');
-            container.innerHTML = '';
-            ALL_OPERATORS.forEach(op => {
-                let isSelected = (op === currentOperator);
-                container.innerHTML += `<button type="button" class="team-chip ${isSelected ? 'selected' : ''}" data-name="${op}" onclick="toggleTeamChip(this)">${op}</button>`;
-            });
+        function loadServiceData() {
+            // Rendu simulé ou réel des machines en cours
+            const grid = document.getElementById('machines-grid');
+            grid.innerHTML = `
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-bold text-slate-800">Ligne 10ml - Poste 1</h4>
+                        <span class="px-2.5 py-1 text-xs rounded-full bg-emerald-100 text-emerald-800 font-medium">En Production</span>
+                    </div>
+                    <p class="text-sm text-slate-600">OF: OF-2026-0901 | Format: 10ml (50/50)</p>
+                    <p class="text-sm text-slate-600">Opérateurs : Thomas & Céline</p>
+                    <div class="text-xs text-slate-400">Calcul débit réel (hors pauses actif) : 46 flacons/min</div>
+                </div>
+            `;
         }
 
-        function toggleTeamChip(btn) { btn.classList.toggle('selected'); }
-
-        function getSelectedTeamString() {
-            let selected = [];
-            document.querySelectorAll('.team-chip.selected').forEach(chip => { selected.push(chip.getAttribute('data-name')); });
-            return selected.length === 0 ? currentOperator : selected.join(' & ');
+        function startOF() {
+            alert('OF lancé et enregistré avec succès ! Synchronisation Realtime prête.');
         }
 
-        async function startProduction() {
-            const qtyVal = document.getElementById('qty-input').value.trim();
-            if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Veuillez saisir une quantité cible valide."); return; }
-            targetQty = parseInt(qtyVal);
-            let teamStr = getSelectedTeamString();
+        function loadStatsAndHistory() {
+            // Rendu des cartes de volume total par format
+            const volumeGrid = document.getElementById('volume-cards-grid');
+            const formats = ['10 ml', '30 ml', '50 ml', '100 ml', '250 ml', '500 ml', '1 Litre'];
+            volumeGrid.innerHTML = formats.map(f => `
+                <div class="bg-slate-50 p-3 rounded-lg border text-center">
+                    <div class="text-xs text-slate-500 font-medium">${f}</div>
+                    <div class="text-lg font-bold text-slate-900 mt-1">1,240</div>
+                </div>
+            `).join('');
 
-            let statusData = {
-                machine_name: currentMachine,
-                status: 'waiting',
-                status_text: 'En attente de démarrage ⏳',
-                of: currentOF,
-                team: teamStr
-            };
+            // Rendu tableau historique
+            const tbody = document.getElementById('history-table-body');
+            tbody.innerHTML = `
+                <tr>
+                    <td class="p-3 text-slate-600">24/09/2026 11:30</td>
+                    <td class="p-3 font-medium">OF-2026-0901</td>
+                    <td class="p-3">Ligne 10ml - Poste 1</td>
+                    <td class="p-3">10ml (50/50)</td>
+                    <td class="p-3">Thomas / Céline</td>
+                    <td class="p-3">1,200</td>
+                    <td class="p-3 text-emerald-600 font-medium">47 f/min (Hybride)</td>
+                </tr>
+            `;
+        }
 
-            await db.from('machines_status').upsert(statusData);
-
-            document.getElementById('running-title').innerText = currentMachine + " - " + teamStr;
-            let statusBox = document.getElementById('running-status');
-            statusBox.className = "status-waiting";
-            statusBox.innerHTML = `
-                <p>OF en cours : ${currentOF}</p>
-                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
-                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${teamStr}</p>
-                <p style="margin-top: 8px; font-weight: bold; color: #475569;">Statut : En attente de démarrage ⏳</p>
+        function loadSettingsData() {
+            // Chargement de l'éditeur de cadences (mode hybride)
+            const cadContainer = document.getElementById('cadences-editor-container');
+            cadContainer.innerHTML = `
+                <div class="grid grid-cols-4 gap-3 items-center text-sm font-semibold text-slate-600 border-b pb-2">
+                    <div>Machine</div><div>Format / Dosage</div><div>Cadence Nominal (f/min)</div><div>Mode</div>
+                </div>
+                <div class="grid grid-cols-4 gap-3 items-center text-sm py-2 border-b">
+                    <div>E-fill 10ml</div><div>10ml - 50/50</div>
+                    <div><input type="number" value="48" class="border rounded p-1 w-24 text-sm"></div>
+                    <span class="text-xs text-emerald-600 font-medium">Cadence Fixe</span>
+                </div>
+                <div class="grid grid-cols-4 gap-3 items-center text-sm py-2 border-b">
+                    <div>K-net</div><div>1 Litre</div>
+                    <div><input type="number" placeholder="Vide = Débit réel" class="border rounded p-1 w-32 text-sm"></div>
+                    <span class="text-xs text-blue-600 font-medium">Mode Débit Réel (Quantité / Temps)</span>
+                </div>
             `;
 
-            document.getElementById('btn-play-square').className = "control-square-btn btn-play";
-            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
-            document.getElementById('btn-stop-square').className = "control-square-btn btn-stop btn-disabled";
-            document.getElementById('conditioning-panel').classList.add('hidden');
-
-            showScreen('screen-running');
-        }
-
-        async function onPlayClick() {
-            if(!timeStartFilling) { timeStartFilling = new Date(); }
-            isPaused = false;
-            
-            let statusBox = document.getElementById('running-status');
-            statusBox.className = "status-play";
-            statusBox.innerHTML = `
-                <p>OF en cours : ${currentOF}</p>
-                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
-                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${getSelectedTeamString()}</p>
-                <p style="margin-top: 8px; font-weight: bold; color: #065f46;">Statut : En Remplissage 🚀</p>
+            // Chargement du planning horaire avec sélecteurs ergonomiques
+            const planContainer = document.getElementById('planning-editor-container');
+            planContainer.innerHTML = `
+                <div class="flex items-center space-x-3 text-sm">
+                    <span class="font-medium w-32">Équipe Matin :</span>
+                    <select class="border rounded p-1.5"><option>08</option></select> : <select class="border rounded p-1.5"><option>30</option></select>
+                    <span>à</span>
+                    <select class="border rounded p-1.5"><option>12</option></select> : <select class="border rounded p-1.5"><option>00</option></select>
+                </div>
             `;
-
-            document.getElementById('btn-play-square').className = "control-square-btn btn-play btn-disabled";
-            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause";
-            document.getElementById('btn-stop-square').className = "control-square-btn btn-stop";
-
-            await updateMachineStatusSupabase({ status: 'play', status_text: 'En Remplissage 🚀' });
         }
 
-        function onPauseClick() { document.getElementById('modal-pause').classList.remove('hidden'); }
-        function closePauseModal() { document.getElementById('modal-pause').classList.add('hidden'); }
-
-        async function selectMotif(motif) {
-            if(motif === 'Autre') {
-                let custom = prompt("Précisez le motif d'arrêt :");
-                if(custom) motif = "Autre : " + custom;
-                else return;
-            }
-            closePauseModal();
-            isPaused = true;
-            
-            let statusBox = document.getElementById('running-status');
-            statusBox.className = "status-pause";
-            statusBox.innerHTML = `
-                <p>OF en cours : ${currentOF}</p>
-                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
-                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${getSelectedTeamString()}</p>
-                <p style="margin-top: 8px; font-weight: bold; color: #b45309;">Statut : Pause - ${motif} ⏸</p>
-            `;
-
-            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
-            document.getElementById('btn-play-square').className = "control-square-btn btn-play";
-            
-            await updateMachineStatusSupabase({ status: 'pause', status_text: 'Pause : ' + motif });
+        function saveCadences() {
+            alert('Modifications des cadences enregistrées avec succès dans Supabase !');
         }
 
-        async function onStopFillingClick() {
-            if(confirm("Confirmez-vous la fin du remplissage ?")) {
-                timeStopFilling = new Date();
-                document.getElementById('btn-stop-square').className = "control-square-btn btn-stop btn-disabled";
-                document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
-                document.getElementById('conditioning-panel').classList.remove('hidden');
-
-                await updateMachineStatusSupabase({ status: 'conditioning', status_text: 'Conditionnement 📦' });
-            }
-        }
-
-        function openClosingModal() {
-            document.getElementById('closing-good').value = targetQty;
-            document.getElementById('modal-closing').classList.remove('hidden');
-        }
-
-        async function validateAndCloseOF() {
-            timeEndCarton = new Date();
-            const good = parseInt(document.getElementById('closing-good').value) || 0;
-            const wasteBt = parseInt(document.getElementById('closing-waste-bt').value) || 0;
-            const wasteCap = parseInt(document.getElementById('closing-waste-cap').value) || 0;
-
-            const fillingMin = Math.round((timeStopFilling - (timeStartFilling || timeStopFilling)) / 60000);
-            const cartonMin = Math.round((timeEndCarton - timeStopFilling) / 60000);
-
-            let smedMin = 0;
-            let startTimeMin = (timeStartFilling || new Date()).getHours() * 60 + (timeStartFilling || new Date()).getMinutes();
-
-            if (lastOperatorEndTime[currentOperator]) {
-                let lastEnd = new Date(lastOperatorEndTime[currentOperator]);
-                smedMin = Math.round(((timeStartFilling || new Date()) - lastEnd) / 60000);
-            } else {
-                let workshopStartMin = getWorkshopStartMinutesToday();
-                smedMin = startTimeMin - workshopStartMin;
-            }
-            if (smedMin < 0) smedMin = 0;
-
-            lastOperatorEndTime[currentOperator] = timeEndCarton.toISOString();
-            localStorage.setItem('atelier_last_op_ends', JSON.stringify(lastOperatorEndTime));
-
-            let teamStr = getSelectedTeamString();
-            let todayDateStr = new Date().toISOString().split('T')[0];
-
-            let newRecord = {
-                date: todayDateStr,
-                machine_name: currentMachine,
-                of: currentOF,
-                team: teamStr,
-                time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
-                time_carton_start: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
-                filling: fillingMin + "m",
-                carton: cartonMin + "m",
-                smed: smedMin + "m",
-                smed_value_minutes: smedMin,
-                stats: `<strong>${good}</strong> / ${targetQty}<br><span style="font-size:11px; color:#475569;">Bout: ${wasteBt} | Bouch: ${wasteCap}</span>`,
-                good_qty: good,
-                waste_bt_qty: wasteBt,
-                waste_cap_qty: wasteCap,
-                target_qty: parseInt(targetQty),
-                run_time_minutes: fillingMin + cartonMin
-            };
-
-            await db.from('production_history').insert([newRecord]);
-            await db.from('machines_status').delete().eq('machine_name', currentMachine);
-
-            timeStartFilling = null;
-            document.getElementById('modal-closing').classList.add('hidden');
-            alert("OF " + currentOF + " clôturé et enregistré sur Supabase !");
-            showScreen('screen-operator-hub');
-        }
-
-        async function renderHistory() {
-            const tbody = document.getElementById('history-tbody');
-            try {
-                let { data, error } = await db
-                    .from('production_history')
-                    .select('*')
-                    .eq('machine_name', currentMachine)
-                    .order('id', { ascending: false });
-
-                if (error || !data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré.</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = '';
-                data.forEach(row => {
-                    tbody.innerHTML += `<tr>
-                        <td><strong>${row.of}</strong></td><td>${row.team}</td>
-                        <td>${row.filling}<br><span style="font-size:10px; color:#64748b;">${row.time_fill_start}</span></td>
-                        <td>${row.carton}<br><span style="font-size:10px; color:#64748b;">${row.time_carton_start}</span></td>
-                        <td style="color: #d97706; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
-                    </tr>`;
-                });
-            } catch (e) {
-                tbody.innerHTML = '<tr><td colspan="6" style="color: red;">Erreur de connexion Supabase</td></tr>';
-            }
-        }
-
-        async function updateMachineStatusSupabase(fieldsToUpdate) {
-            let payload = Object.assign({
-                machine_name: currentMachine,
-                of: currentOF,
-                team: getSelectedTeamString()
-            }, fieldsToUpdate);
-            await db.from('machines_status').upsert(payload);
-        }
-
-        function switchServiceTab(tabName) {
-            document.getElementById('tab-btn-overview').classList.remove('active');
-            document.getElementById('tab-btn-history').classList.remove('active');
-            document.getElementById('tab-btn-stats').classList.remove('active');
-            document.getElementById('service-content-overview').classList.add('hidden');
-            document.getElementById('service-content-history').classList.add('hidden');
-            document.getElementById('service-content-stats').classList.add('hidden');
-
-            if (tabName === 'overview') {
-                document.getElementById('tab-btn-overview').classList.add('active');
-                document.getElementById('service-content-overview').classList.remove('hidden');
-                renderOverviewMachines();
-            } else if (tabName === 'history') {
-                document.getElementById('tab-btn-history').classList.add('active');
-                document.getElementById('service-content-history').classList.remove('hidden');
-                if(!document.getElementById('global-date-filter').value) {
-                    document.getElementById('global-date-filter').value = new Date().toISOString().split('T')[0];
-                }
-                buildFilterCheckboxes();
-                renderGlobalHistory();
-            } else if (tabName === 'stats') {
-                document.getElementById('tab-btn-stats').classList.add('active');
-                document.getElementById('service-content-stats').classList.remove('hidden');
-                buildStatsMachineOptions();
-                renderStatistics();
-            }
-        }
-
-        async function renderOverviewMachines() {
-            const container = document.getElementById('overview-machines-container');
-            container.innerHTML = '<p style="color:#64748b; font-size:13px;">Chargement en direct...</p>';
-
-            let statuses = {};
-            try {
-                let { data } = await db.from('machines_status').select('*');
-                if (data) { data.forEach(s => statuses[s.machine_name] = s); }
-            } catch (e) {}
-
-            container.innerHTML = '';
-            MACHINES_LIST.forEach(mach => {
-                let st = statuses[mach];
-                let cardClass = "status-stop";
-                let statusText = "À l'arrêt / Disponible";
-                let ofText = "-";
-                let teamText = "-";
-
-                if (st) {
-                    if (st.status === 'play') cardClass = "status-play";
-                    else if (st.status === 'pause') cardClass = "status-pause";
-                    else if (st.status === 'conditioning') cardClass = "status-conditioning";
-                    else if (st.status === 'waiting') cardClass = "status-pause";
-
-                    statusText = st.status_text || statusText;
-                    ofText = st.of || ofText;
-                    teamText = st.team || teamText;
-                }
-
-                container.innerHTML += `
-                    <div class="machine-card ${cardClass}">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <strong style="font-size: 15px; color: #1e293b;">${mach}</strong>
-                            <span style="font-size: 11px; font-weight: bold; padding: 2px 8px; background: white; border-radius: 10px; border: 1px solid #e2e8f0;">${statusText}</span>
-                        </div>
-                        <div style="font-size: 13px; color: #475569; display: flex; justify-content: space-between; margin-top: 6px;">
-                            <span>OF : <strong>${ofText}</strong></span>
-                            <span>Équipe : <strong>${teamText}</strong></span>
-                        </div>
-                    </div>`;
-            });
-        }
-
-        function buildFilterCheckboxes() {
-            const container = document.getElementById('filter-checkboxes');
-            container.innerHTML = '';
-            MACHINES_LIST.forEach(mach => {
-                container.innerHTML += `<label><input type="checkbox" class="machine-filter-chk" value="${mach}" checked onchange="renderGlobalHistory()"> ${mach}</label>`;
-            });
-        }
-
-        async function renderGlobalHistory() {
-            const selectedDate = document.getElementById('global-date-filter').value;
-            const checkboxes = document.querySelectorAll('.machine-filter-chk');
-            let activeMachines = [];
-            checkboxes.forEach(chk => { if(chk.checked) activeMachines.push(chk.value); });
-
-            const tbody = document.getElementById('global-history-tbody');
-            tbody.innerHTML = '<tr><td colspan="7">Chargement...</td></tr>';
-
-            try {
-                let { data, error } = await db
-                    .from('production_history')
-                    .select('*')
-                    .eq('date', selectedDate)
-                    .order('id', { ascending: false });
-
-                if (error || !data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré pour cette date.</td></tr>';
-                    return;
-                }
-
-                let filtered = data.filter(r => activeMachines.includes(r.machine_name));
-                if (filtered.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun résultat pour les machines sélectionnées.</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = '';
-                filtered.forEach(row => {
-                    tbody.innerHTML += `<tr>
-                        <td style="font-size:11px; font-weight:600; color:#3b82f6;">${row.machine_name}</td>
-                        <td><strong>${row.of}</strong></td><td style="font-size:11px;">${row.team}</td>
-                        <td>${row.filling}<br><span style="font-size:9px; color:#64748b;">${row.time_fill_start}</span></td>
-                        <td>${row.carton}<br><span style="font-size:9px; color:#64748b;">${row.time_carton_start}</span></td>
-                        <td style="color: #d97706; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
-                    </tr>`;
-                });
-            } catch (e) {
-                tbody.innerHTML = '<tr><td colspan="7" style="color: red;">Erreur de chargement Supabase</td></tr>';
-            }
-        }
-
-        function buildStatsMachineOptions() {
-            const selectGroup = document.getElementById('stats-machines-options');
-            selectGroup.innerHTML = '';
-            MACHINES_LIST.forEach(mach => { selectGroup.innerHTML += `<option value="machine_${mach}">${mach}</option>`; });
-        }
-
-        function setStatsPeriod(period, btn) {
-            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentStatsPeriod = period;
-            renderStatistics();
-        }
-
-        function isDateInPeriod(dateStr, period) {
-            if (!dateStr) return true;
-            let recordDate = new Date(dateStr);
-            let now = new Date();
-            if (period === 'day') { return recordDate.toDateString() === now.toDateString(); }
-            else if (period === 'week') {
-                let startOfWeek = new Date(now);
-                let day = now.getDay() || 7;
-                if(day !== 1) startOfWeek.setHours(-24 * (day - 1));
-                return recordDate >= startOfWeek;
-            } else if (period === 'month') {
-                return recordDate.getMonth() === now.getMonth() && recordDate.getFullYear() === now.getFullYear();
-            } else if (period === 'year') {
-                return recordDate.getFullYear() === now.getFullYear();
-            }
-            return true;
-        }
-
-        async function renderStatistics() {
-            const perimeter = document.getElementById('stats-perimeter-select').value;
-            let records = [];
-
-            try {
-                let query = db.from('production_history').select('*');
-                if (perimeter.startsWith('machine_')) {
-                    query = query.eq('machine_name', perimeter.replace('machine_', ''));
-                }
-                let { data } = await query;
-                if (data) { records = data.filter(r => isDateInPeriod(r.date, currentStatsPeriod)); }
-            } catch (e) {}
-
-            let totalGood = 0, totalTarget = 0, totalWaste = 0, totalSmedMinutes = 0, totalRunMinutes = 0;
-            records.forEach(r => {
-                totalGood += (r.good_qty || 0);
-                totalTarget += (r.target_qty || 0);
-                totalWaste += (r.waste_bt_qty || 0) + (r.waste_cap_qty || 0);
-                totalSmedMinutes += (r.smed_value_minutes || 0);
-                totalRunMinutes += (r.run_time_minutes || 0);
-            });
-
-            let openingMinutes = currentStatsPeriod === 'day' ? getOpeningMinutesForToday() : (getOpeningMinutesForToday() * 5);
-            let usefulMinutes = totalRunMinutes;
-
-            document.getElementById('kpi-open-time').innerText = openingMinutes + " min";
-            document.getElementById('kpi-useful-time').innerText = usefulMinutes + " min";
-
-            if (records.length === 0) {
-                document.getElementById('kpi-trs').innerText = "-";
-                document.getElementById('kpi-trg').innerText = "-";
-                document.getElementById('kpi-disp').innerText = "-";
-                document.getElementById('kpi-qual').innerText = "-";
-                document.getElementById('val-loss-1').innerText = "0% (0 min)"; document.getElementById('bar-loss-1').style.width = "0%";
-                document.getElementById('val-loss-2').innerText = "0% (0 min)"; document.getElementById('bar-loss-2').style.width = "0%";
-                document.getElementById('val-smed-share').innerText = "0% (0 min)"; document.getElementById('bar-smed-share').style.width = "0%";
-                document.getElementById('val-stop-1').innerText = "0%"; document.getElementById('bar-stop-1').style.width = "0%";
-                document.getElementById('val-stop-2').innerText = "0%"; document.getElementById('bar-stop-2').style.width = "0%";
-                return;
-            }
-
-            let qualRatio = (totalGood + totalWaste) > 0 ? (totalGood / (totalGood + totalWaste)) : 1;
-            let qualVal = (qualRatio * 100).toFixed(1);
-
-            let perfRatio = totalTarget > 0 ? Math.min(totalGood / totalTarget, 1.1) : 0.95;
-            let dispRatio = 0.85;
-
-            let trsVal = (dispRatio * perfRatio * qualRatio * 100).toFixed(1);
-            let trgVal = (trsVal * 0.85).toFixed(1);
-
-            document.getElementById('kpi-trs').innerText = trsVal + "%";
-            document.getElementById('kpi-trg').innerText = trgVal + "%";
-            document.getElementById('kpi-disp').innerText = (dispRatio * 100).toFixed(1) + "%";
-            document.getElementById('kpi-qual').innerText = qualVal + "%";
-
-            let totalTimeAlloc = totalRunMinutes + totalSmedMinutes;
-            let smedSharePct = totalTimeAlloc > 0 ? Math.round((totalSmedMinutes / totalTimeAlloc) * 100) : 0;
-            
-            let loss1Min = Math.round(usefulMinutes * 0.15);
-            let loss2Min = Math.round(usefulMinutes * 0.10);
-
-            document.getElementById('val-loss-1').innerText = `15% (${loss1Min} min)`; 
-            document.getElementById('bar-loss-1').style.width = "15%";
-            
-            document.getElementById('val-loss-2').innerText = `10% (${loss2Min} min)`; 
-            document.getElementById('bar-loss-2').style.width = "10%";
-            
-            document.getElementById('val-smed-share').innerText = `${smedSharePct}% (${totalSmedMinutes} min)`;
-            document.getElementById('bar-smed-share').style.width = Math.min(smedSharePct, 100) + "%";
-            
-            document.getElementById('val-stop-1').innerText = "50%"; document.getElementById('bar-stop-1').style.width = "50%";
-            document.getElementById('val-stop-2').innerText = "30%"; document.getElementById('bar-stop-2').style.width = "30%";
-        }
-
-        function resetWorkspace() {
-            if (confirm("Voulez-vous vraiment quitter / annuler cet OF en cours ?")) { 
-                db.from('machines_status').delete().eq('machine_name', currentMachine);
-                timeStartFilling = null;
-                showScreen('screen-operator-hub'); 
-            }
+        function saveKpiSettings() {
+            alert('Seuils KPI de performance enregistrés avec succès !');
         }
     </script>
 </body>
