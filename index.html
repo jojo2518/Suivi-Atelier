@@ -932,9 +932,9 @@
                 initialTargetQty = 500;
             }
 
-            // CORRECTION : Forcer l'équipe active dans Supabase avec l'opérateur connecté (ex: Alexis)
+            // CORRECTION CRITIQUE : L'équipe active devient l'opérateur du jour connecté (ex: Alexis)
             let newTeamStr = currentOperator;
-            await db.from('machines_status').update({ team: newTeamStr }).eq('machine_name', currentMachine);
+            await db.from('machines_status').update({ team: newTeamStr, status: 'waiting' }).eq('machine_name', currentMachine);
 
             alert(`Bonjour ${currentOperator} !\nReprise de l'OF en cours (${currentOF}) entamé par ${previousTeam || 'la veille'}.\nIl reste ${targetQty} pièces à produire sur les ${initialTargetQty} initiales.\n\nCliquez sur OK pour lancer la production.`);
 
@@ -978,9 +978,7 @@
         function toggleTeamChip(btn) { btn.classList.toggle('selected'); }
 
         function getSelectedTeamString() {
-            let selected = [];
-            document.querySelectorAll('.team-chip.selected').forEach(chip => { selected.push(chip.getAttribute('data-name')); });
-            return selected.length === 0 ? currentOperator : selected.join(' & ');
+            return currentOperator || "Atelier";
         }
 
         async function startProduction() {
@@ -988,7 +986,7 @@
             if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Veuillez saisir une quantité cible valide."); return; }
             targetQty = parseInt(qtyVal);
             initialTargetQty = targetQty; // Mémorisation de l'objectif global de départ
-            let teamStr = getSelectedTeamString();
+            let teamStr = currentOperator;
 
             let statusData = {
                 machine_name: currentMachine,
@@ -1048,7 +1046,7 @@
             statusBox.innerHTML = `
                 <p>OF en cours : ${currentOF}</p>
                 <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
-                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${getSelectedTeamString()}</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${currentOperator}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #065f46;">Statut : En Remplissage 🚀</p>
             `;
 
@@ -1078,7 +1076,7 @@
             statusBox.innerHTML = `
                 <p>OF en cours : ${currentOF}</p>
                 <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
-                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${getSelectedTeamString()}</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${currentOperator}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #b45309;">Statut : Pause - ${motif} ⏸</p>
             `;
 
@@ -1105,7 +1103,7 @@
 
                 let fillingMin = timeStartFilling ? Math.round((new Date() - timeStartFilling) / 60000) : 30;
                 let todayDateStr = new Date().toISOString().split('T')[0];
-                let teamStr = getSelectedTeamString();
+                let teamStr = currentOperator;
 
                 let interimRecord = {
                     date: todayDateStr,
@@ -1190,7 +1188,7 @@
             lastOperatorEndTime[currentOperator] = timeEndCarton.toISOString();
             localStorage.setItem('atelier_last_op_ends', JSON.stringify(lastOperatorEndTime));
 
-            let teamStr = getSelectedTeamString(); // Récupère bien l'équipe/opérateur actuel (ex: Alexis)
+            let teamStr = currentOperator; // Attribue explicitement la clôture à l'opérateur connecté (ex: Alexis)
             let todayDateStr = new Date().toISOString().split('T')[0];
             let globalTarget = initialTargetQty > 0 ? initialTargetQty : targetQty;
 
@@ -1198,7 +1196,7 @@
                 date: todayDateStr,
                 machine_name: currentMachine,
                 of: currentOF,
-                team: teamStr, // Attribue la ligne de clôture à l'opérateur du jour
+                team: teamStr,
                 time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 time_carton_start: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 filling: fillingMin + "m",
@@ -1219,7 +1217,7 @@
             timeStartFilling = null;
             initialTargetQty = 0;
             document.getElementById('modal-closing').classList.add('hidden');
-            alert("OF " + currentOF + " clôturé et enregistré sur Supabase avec la quantité totale de " + good + " pièces !");
+            alert("OF " + currentOF + " clôturé et enregistré sur Supabase au nom de " + teamStr + " avec la quantité de " + good + " pièces !");
             showScreen('screen-operator-hub');
         }
 
@@ -1254,7 +1252,7 @@
             let payload = Object.assign({
                 machine_name: currentMachine,
                 of: currentOF,
-                team: getSelectedTeamString()
+                team: currentOperator
             }, fieldsToUpdate);
             await db.from('machines_status').upsert(payload);
         }
