@@ -849,7 +849,7 @@
                 if (!error && data) {
                     data.forEach(item => {
                         if (!serverCadences[item.machine_name]) serverCadences[item.machine_name] = {};
-                        serverCadences[item.machine_name][item.product_type] = item.cadence;
+                        serverCadences[item.machine_name][item.format] = item.cadence;
                     });
                 }
             } catch (e) {
@@ -886,7 +886,7 @@
                         let val = parseFloat(inputEl.value) || 0;
                         upsertList.push({
                             machine_name: mach,
-                            product_type: prod,
+                            format: prod,
                             cadence: val
                         });
                     }
@@ -894,7 +894,7 @@
             }
 
             try {
-                let { error } = await db.from('machine_cadences').upsert(upsertList, { onConflict: 'machine_name,product_type' });
+                let { error } = await db.from('machine_cadences').upsert(upsertList, { onConflict: 'machine_name,format' });
                 if (error) {
                     alert("Erreur lors de l'enregistrement sur le serveur : " + error.message);
                 } else {
@@ -1037,7 +1037,6 @@
             document.getElementById('qty-container').style.display = 'none';
             document.getElementById('start-btn').classList.add('hidden');
             
-            // Remplir dynamiquement le select des formats selon la machine
             const formatSelect = document.getElementById('format-select');
             formatSelect.innerHTML = '';
             if (PRODUCT_TYPES_MAP[machineName]) {
@@ -1595,14 +1594,13 @@
                 if (data) { records = data.filter(r => isDateInPeriod(r.date, currentStatsPeriod)); }
             } catch (e) {}
 
-            // Récupération des cadences serveur pour le calcul précis de la performance
             let serverCadences = {};
             try {
                 let { data } = await db.from('machine_cadences').select('*');
                 if (data) {
                     data.forEach(item => {
                         if (!serverCadences[item.machine_name]) serverCadences[item.machine_name] = {};
-                        serverCadences[item.machine_name][item.product_type] = item.cadence;
+                        serverCadences[item.machine_name][item.format] = item.cadence;
                     });
                 }
             } catch (e) {}
