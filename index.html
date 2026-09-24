@@ -221,7 +221,7 @@
 <body>
 
     <div id="top-right-icons">
-        <button class="icon-top-btn" onclick="openSettings()" title="Paramètres">⚙️</button>
+        <button class="icon-top-btn" onclick="openSettingsPinPrompt()" title="Paramètres">⚙️</button>
         <div id="live-clock">--:--:--</div>
     </div>
 
@@ -246,7 +246,7 @@
                 <button class="app-btn" onclick="selectOperator('Alexis')">Alexis</button>
                 <button class="app-btn" onclick="selectOperator('Nicolas')">Nicolas</button>
                 <button class="app-btn" onclick="selectOperator('Jordan')">Jordan</button>
-                <button class="app-btn service-btn" onclick="promptAdminPassword()">⚙️ SERVICE 🛠️</button>
+                <button class="app-btn service-btn" onclick="promptAdminPasswordPin()">⚙️ SERVICE 🛠️</button>
             </div>
             <span class="back-link" onclick="showScreen('screen-welcome')">Retour</span>
         </div>
@@ -453,6 +453,29 @@
         </div>
     </div>
 
+    <div id="modal-pin" class="keypad-modal hidden">
+        <div class="keypad-box">
+            <h3 style="font-size: 16px; margin-bottom: 10px; color: #1e293b;" id="pin-modal-title">Code PIN Sécurité</h3>
+            <div class="keypad-display" id="pin-display-val" style="-webkit-text-security: disc; letter-spacing: 4px;"></div>
+            <div class="keypad-grid">
+                <button class="key-btn" onclick="pinPress('1')">1</button>
+                <button class="key-btn" onclick="pinPress('2')">2</button>
+                <button class="key-btn" onclick="pinPress('3')">3</button>
+                <button class="key-btn" onclick="pinPress('4')">4</button>
+                <button class="key-btn" onclick="pinPress('5')">5</button>
+                <button class="key-btn" onclick="pinPress('6')">6</button>
+                <button class="key-btn" onclick="pinPress('7')">7</button>
+                <button class="key-btn" onclick="pinPress('8')">8</button>
+                <button class="key-btn" onclick="pinPress('9')">9</button>
+                <button class="key-btn action" onclick="pinClear()">C</button>
+                <button class="key-btn" onclick="pinPress('0')">0</button>
+                <button class="key-btn action" onclick="pinBack()">⌫</button>
+                <button class="key-btn validate" onclick="pinValidate()">Valider ✓</button>
+            </div>
+            <span class="back-link" onclick="closePinModal()" style="display:block; margin-top:12px;">Annuler</span>
+        </div>
+    </div>
+
     <div id="modal-pause" class="modal-overlay hidden">
         <div class="modal-box">
             <h3>Motif de Pause / Arrêt</h3>
@@ -501,7 +524,7 @@
                 <button class="app-btn machine" style="width: 100%; padding: 12px; font-size: 15px;" onclick="saveScheduleSettings()">💾 Enregistrer les horaires</button>
             </div>
             <div class="form-group" style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-                <button class="btn-danger" onclick="confirmResetDatabase()">🗑️ Vider le stockage local</button>
+                <button class="btn-danger" onclick="confirmResetDatabasePinPrompt()">🗑️ Vider le stockage local</button>
             </div>
             <span class="back-link" onclick="closeSettings()" style="display:block; text-align:center;">Fermer</span>
         </div>
@@ -537,6 +560,9 @@
         let keypadTargetInputId = null;
         let keypadIsPrefixedMO = false;
         let keypadCurrentValue = "0";
+
+        let pinTargetAction = null; // 'service', 'settings', 'reset'
+        let pinCurrentValue = "";
 
         let timeStartFilling = null;
         let timeStopFilling = null;
@@ -615,21 +641,73 @@
             document.getElementById('op-stat-time').innerText = totalTime + " min";
         }
 
-        function promptAdminPassword() {
-            let pwd = prompt("Entrez le mot de passe Administrateur (Service) :");
-            if (pwd === ADMIN_PIN) {
-                currentOperator = "Jordan (Admin)";
-                switchServiceTab('overview');
-                showScreen('screen-service');
-            } else if (pwd !== null) { alert("Mot de passe incorrect."); }
+        // --- GESTION DU PAVÉ NUMÉRIQUE PIN ---
+        function openPinModal(actionType, titleText) {
+            pinTargetAction = actionType;
+            pinCurrentValue = "";
+            document.getElementById('pin-modal-title').innerText = titleText;
+            updatePinDisplay();
+            document.getElementById('modal-pin').classList.remove('hidden');
         }
 
-        function openSettings() {
-            let pwd = prompt("Accès Paramètres :");
-            if (pwd === ADMIN_PIN) {
-                renderScheduleTable();
-                document.getElementById('modal-settings').classList.remove('hidden');
-            } else if (pwd !== null) { alert("Code PIN incorrect."); }
+        function updatePinDisplay() {
+            document.getElementById('pin-display-val').innerText = pinCurrentValue;
+        }
+
+        function pinPress(digit) {
+            if (pinCurrentValue.length < 6) {
+                pinCurrentValue += digit;
+                updatePinDisplay();
+            }
+        }
+
+        function pinClear() {
+            pinCurrentValue = "";
+            updatePinDisplay();
+        }
+
+        function pinBack() {
+            if (pinCurrentValue.length > 0) {
+                pinCurrentValue = pinCurrentValue.slice(0, -1);
+                updatePinDisplay();
+            }
+        }
+
+        function pinValidate() {
+            if (pinCurrentValue === ADMIN_PIN) {
+                closePinModal();
+                if (pinTargetAction === 'service') {
+                    currentOperator = "Jordan (Admin)";
+                    switchServiceTab('overview');
+                    showScreen('screen-service');
+                } else if (pinTargetAction === 'settings') {
+                    renderScheduleTable();
+                    document.getElementById('modal-settings').classList.remove('hidden');
+                } else if (pinTargetAction === 'reset') {
+                    localStorage.clear();
+                    alert("Stockage local réinitialisé !");
+                    location.reload();
+                }
+            } else {
+                alert("Code PIN incorrect.");
+                pinClear();
+            }
+        }
+
+        function closePinModal() {
+            document.getElementById('modal-pin').classList.add('hidden');
+        }
+
+        function promptAdminPasswordPin() {
+            openPinModal('service', 'Code PIN - Accès Service 🛠️');
+        }
+
+        function openSettingsPinPrompt() {
+            openPinModal('settings', 'Code PIN - Paramètres ⚙️');
+        }
+
+        function confirmResetDatabasePinPrompt() {
+            openPinModal('reset', 'Sécurité : PIN pour effacer');
         }
 
         function closeSettings() { document.getElementById('modal-settings').classList.add('hidden'); }
@@ -646,7 +724,7 @@
 
         function generateMinuteOptions(selectedMinute) {
             let html = '';
-            for (let m = 0; m < 60; m += 5) { // Par pas de 5 min (ou 1 min si besoin)
+            for (let m = 0; m < 60; m += 5) {
                 let mStr = String(m).padStart(2, '0');
                 html += `<option value="${mStr}" ${mStr === selectedMinute ? 'selected' : ''}>${mStr}</option>`;
             }
@@ -740,15 +818,6 @@
             let todayName = daysMap[new Date().getDay()];
             let dayConfig = schedule.find(s => s.day === todayName);
             return dayConfig ? timeToMinutes(dayConfig.start) : (8 * 60 + 30);
-        }
-
-        function confirmResetDatabase() {
-            const pinCheck = prompt("Sécurité : Saisissez le code PIN pour effacer les données locales :");
-            if (pinCheck === ADMIN_PIN) {
-                localStorage.clear();
-                alert("Stockage local réinitialisé !");
-                location.reload();
-            } else if (pinCheck !== null) { alert("Code incorrect."); }
         }
 
         function openKeypad(inputId, isMO) {
