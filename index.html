@@ -635,12 +635,17 @@
                 opRecords.forEach(r => {
                     totalGood += (r.good_qty || 0);
                     totalTime += (r.run_time_minutes || 0);
+
+                    // Coloration rosée dans l'historique opérateur si écart détecté
+                    let isDiscrepancy = r.stats && r.stats.includes('Écart');
+                    let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
+
                     tbody.innerHTML += `
-                        <tr>
+                        <tr class="${rowClass}">
                             <td style="font-size:11px; font-weight:600; color:#3b82f6;">${r.machine_name}</td>
                             <td><strong>${r.of}</strong></td>
                             <td style="font-size:11px;">${r.team}</td>
-                            <td><strong>${r.good_qty || 0}</strong> pcs</td>
+                            <td><strong>${r.stats || (r.good_qty + ' pcs')}</strong></td>
                         </tr>
                     `;
                 });
@@ -1116,7 +1121,7 @@
                     carton: "0m",
                     smed: "0m",
                     smed_value_minutes: 0,
-                    stats: `<strong>${producedSoFar}</strong> / ${initialTargetQty} <span style="font-size:10px; color:#8b5cf6;">(Suspendu J-1)</span>`,
+                    stats: `${producedSoFar} / ${initialTargetQty} (Suspendu J-1)`,
                     good_qty: producedSoFar,
                     waste_bt_qty: 0,
                     waste_cap_qty: 0,
@@ -1158,11 +1163,11 @@
             }
         }
 
-        let expectedRemainingQty = 0; // Stocke le restant attendu pour vérification d'écart
+        let expectedRemainingQty = 0; 
 
         async function openClosingModal() {
             let qteRealisee = targetQty; 
-            expectedRemainingQty = targetQty; // Mémorise la cible attendue
+            expectedRemainingQty = targetQty; 
             
             try {
                 let { data } = await db.from('machines_status').select('*').eq('machine_name', currentMachine).single();
@@ -1173,19 +1178,18 @@
             } catch (e) {}
 
             document.getElementById('closing-good').value = qteRealisee;
-            document.getElementById('modal-closing').classList.add('hidden'); // Sécurité pour s'assurer du clean
+            document.getElementById('modal-closing').classList.add('hidden'); 
             document.getElementById('modal-closing').classList.remove('hidden');
         }
 
         async function validateAndCloseOF() {
             const good = parseInt(document.getElementById('closing-good').value) || 0;
             
-            // CONTRÔLE D'ÉCART : Si la quantité saisie est inférieure au restant attendu
             if (good < expectedRemainingQty) {
                 let diff = expectedRemainingQty - good;
                 let confirmation = confirm(`⚠️ ATTENTION : Il manque ${diff} bouteille(s) par rapport à l'objectif restant (${expectedRemainingQty} attendues, ${good} saisies).\n\nVoulez-vous confirmer ce manque et clôturer l'OF ?`);
                 if (!confirmation) {
-                    return; // L'opérateur annule et peut corriger sa saisie
+                    return; 
                 }
             }
 
@@ -1215,10 +1219,10 @@
             let todayDateStr = new Date().toISOString().split('T')[0];
             let globalTarget = initialTargetQty > 0 ? initialTargetQty : (good + (targetQty - good));
 
-            let hasDiscrepancy = good < expectedRemainingQty;
-            let statsText = `<strong>${good}</strong> / ${globalTarget}<br><span style="font-size:11px; color:#475569;">Bout: ${wasteBt} | Bouch: ${wasteCap}</span>`;
-            if (hasDiscrepancy) {
-                statsText += `<br><span style="font-size:10px; color:#dc2626; font-weight:bold;">⚠️ Écart détecté (-${expectedRemainingQty - good})</span>`;
+            // STATS AU FORMAT TEXTE PROPRE SANS BALISES HTML
+            let statsText = `${good} / ${globalTarget}`;
+            if (good < expectedRemainingQty) {
+                statsText += ` (Écart : -${expectedRemainingQty - good})`;
             }
 
             let newRecord = {
@@ -1265,11 +1269,15 @@
                 }
                 tbody.innerHTML = '';
                 data.forEach(row => {
-                    tbody.innerHTML += `<tr>
+                    let isDiscrepancy = row.stats && row.stats.includes('Écart');
+                    let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
+
+                    tbody.innerHTML += `<tr class="${rowClass}">
                         <td><strong>${row.of}</strong></td><td>${row.team}</td>
                         <td>${row.filling}<br><span style="font-size:10px; color:#64748b;">${row.time_fill_start}</span></td>
                         <td>${row.carton}<br><span style="font-size:10px; color:#64748b;">${row.time_carton_start}</span></td>
-                        <td style="color: #d97706; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
+                        <td style="color: #d97706; font-weight: 600;">${row.smed}</td>
+                        <td>${row.stats}<br><span style="font-size:10px; color:#475569;">Bout: ${row.waste_bt_qty} | Bouch: ${row.waste_cap_qty}</span></td>
                     </tr>`;
                 });
             } catch (e) {
@@ -1410,8 +1418,7 @@
 
                 tbody.innerHTML = '';
                 filtered.forEach(row => {
-                    // Détection si la ligne comporte un écart (si la quantité produite est inférieure à la cible de la ligne ou si le texte contient un écart)
-                    let isDiscrepancy = (row.good_qty < row.target_qty) && !row.stats.includes('Suspendu');
+                    let isDiscrepancy = row.stats && row.stats.includes('Écart');
                     let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
 
                     tbody.innerHTML += `<tr class="${rowClass}">
@@ -1419,7 +1426,8 @@
                         <td><strong>${row.of}</strong></td><td style="font-size:11px;">${row.team}</td>
                         <td>${row.filling}<br><span style="font-size:9px; color:#64748b;">${row.time_fill_start}</span></td>
                         <td>${row.carton}<br><span style="font-size:9px; color:#64748b;">${row.time_carton_start}</span></td>
-                        <td style="color: #d97706; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
+                        <td style="color: #d97706; font-weight: 600;">${row.smed}</td>
+                        <td>${row.stats}<br><span style="font-size:10px; color:#475569;">Bout: ${row.waste_bt_qty} | Bouch: ${row.waste_cap_qty}</span></td>
                     </tr>`;
                 });
             } catch (e) {
