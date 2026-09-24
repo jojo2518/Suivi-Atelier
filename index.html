@@ -170,7 +170,7 @@
         .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
         .history-table th, .history-table td { border: 1px solid #cbd5e1; padding: 8px 6px; text-align: center; vertical-align: middle; }
         .history-table th { background-color: #f1f5f9; color: #334155; font-weight: 600; }
-        .row-discrepancy { background-color: #fff1f2 !important; }
+        .row-discrepancy { background-color: #fff1f2 !important; } /* Fond rosé pour les écarts */
 
         .filter-panel { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 10px; margin-bottom: 12px; text-align: left; font-size: 13px; }
         .filter-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
@@ -298,7 +298,7 @@
                 <div style="overflow-x: auto; max-height: 300px;">
                     <table class="history-table">
                         <thead>
-                            <tr><th>Mach.</th><th>OF / Format</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod / Rebuts</th></tr>
+                            <tr><th>Mach.</th><th>OF</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod / Rebuts</th></tr>
                         </thead>
                         <tbody id="global-history-tbody"></tbody>
                     </table>
@@ -364,11 +364,6 @@
                 </div>
             </div>
 
-            <div class="form-group" id="format-container" style="display: none;">
-                <label for="format-select">Format / Type de produit :</label>
-                <select id="format-select" class="app-input" style="background: #fff; font-weight: bold; cursor: pointer;"></select>
-            </div>
-
             <div class="form-group" id="qty-container" style="display: none;">
                 <label for="qty-input">Quantité cible à produire :</label>
                 <input type="text" id="qty-input" class="app-input" placeholder="Ex: 500" readonly onclick="openKeypad('qty-input', false)" style="cursor: pointer; font-weight: bold;">
@@ -384,7 +379,7 @@
                 <h4>📊 Historique du jour sur la machine</h4>
                 <div style="overflow-x: auto; max-height: 180px;">
                     <table class="history-table">
-                        <thead><tr><th>OF / Format</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod & Rebuts</th></tr></thead>
+                        <thead><tr><th>OF</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod & Rebuts</th></tr></thead>
                         <tbody id="history-tbody"><tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF validé pour l'instant aujourd'hui.</td></tr></tbody>
                     </table>
                 </div>
@@ -431,7 +426,7 @@
                 <h4>Historique de mes OF (Jour)</h4>
                 <div style="overflow-x: auto; max-height: 220px;">
                     <table class="history-table">
-                        <thead><tr><th>Mach.</th><th>OF / Format</th><th>Équipe</th><th>Prod</th></tr></thead>
+                        <thead><tr><th>Mach.</th><th>OF</th><th>Équipe</th><th>Prod</th></tr></thead>
                         <tbody id="op-stats-tbody"><tr><td colspan="4" style="color: #94a3b8; font-style: italic;">Aucune production enregistrée.</td></tr></tbody>
                     </table>
                 </div>
@@ -525,34 +520,16 @@
     <div id="modal-settings" class="modal-overlay hidden">
         <div class="modal-box">
             <h3>⚙️ Paramètres & Horaires</h3>
-            <div class="service-tabs" style="margin-bottom: 15px;">
-                <button class="service-tab-btn active" id="settings-tab-horaires" onclick="switchSettingsTab('horaires')">Horaires Atelier</button>
-                <button class="service-tab-btn" id="settings-tab-cadences" onclick="switchSettingsTab('cadences')">Cadences Machines</button>
+            <div class="form-group">
+                <label>Configuration des horaires de l'atelier :</label>
+                <table class="schedule-table">
+                    <thead><tr><th>Jour</th><th>Début</th><th>Fin</th><th>Repas</th><th>Pauses</th></tr></thead>
+                    <tbody id="schedule-tbody"></tbody>
+                </table>
             </div>
-
-            <div id="settings-content-horaires">
-                <div class="form-group">
-                    <label>Configuration des horaires de l'atelier :</label>
-                    <table class="schedule-table">
-                        <thead><tr><th>Jour</th><th>Début</th><th>Fin</th><th>Repas</th><th>Pauses</th></tr></thead>
-                        <tbody id="schedule-tbody"></tbody>
-                    </table>
-                </div>
-                <div class="form-group" style="margin-top: 15px;">
-                    <button class="app-btn machine" style="width: 100%; padding: 12px; font-size: 15px;" onclick="saveScheduleSettings()">💾 Enregistrer les horaires</button>
-                </div>
+            <div class="form-group" style="margin-top: 15px;">
+                <button class="app-btn machine" style="width: 100%; padding: 12px; font-size: 15px;" onclick="saveScheduleSettings()">💾 Enregistrer les horaires</button>
             </div>
-
-            <div id="settings-content-cadences" class="hidden">
-                <div class="form-group">
-                    <label style="font-size: 12px; color: #64748b; margin-bottom: 10px;">Indiquez les cadences (pièces par minute). Laissez à 0 pour utiliser le calcul estimé automatique.</label>
-                    <div id="cadences-config-container" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;"></div>
-                </div>
-                <div class="form-group" style="margin-top: 15px;">
-                    <button class="app-btn machine" style="width: 100%; padding: 12px; font-size: 15px;" onclick="saveCadencesSettings()">💾 Enregistrer sur le serveur</button>
-                </div>
-            </div>
-
             <div class="form-group" style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
                 <button class="btn-danger" onclick="confirmResetDatabasePinPrompt()">🗑️ Vider le stockage local</button>
             </div>
@@ -580,17 +557,9 @@
             { day: 'Vendredi', start: '08:30', end: '11:30', meal: '00:00', pause: '00:20' }
         ];
 
-        const PRODUCT_TYPES_MAP = {
-            'E-fill SW 10ml 1': ['50/50', '20/80', '70/30'],
-            'E-fill SW 10ml 2': ['50/50', '20/80', '70/30'],
-            'E-fill 50/30ml': ['50/50', '20/80', '70/30', '30ml-'],
-            'K-net': ['100ml', '-250ml', '-500ml', '1L']
-        };
-
         let currentOperator = "";
         let currentMachine = "";
         let currentOF = "";
-        let currentProductFormat = "";
         let targetQty = 0;
         let initialTargetQty = 0; 
         let isPaused = false;
@@ -667,6 +636,7 @@
                     totalGood += (r.good_qty || 0);
                     totalTime += (r.run_time_minutes || 0);
 
+                    // Coloration rosée dans l'historique opérateur si écart détecté
                     let isDiscrepancy = r.stats && r.stats.includes('Écart');
                     let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
 
@@ -716,7 +686,7 @@
             }
         }
 
-        async function pinValidate() {
+        function pinValidate() {
             if (pinCurrentValue === ADMIN_PIN) {
                 closePinModal();
                 if (pinTargetAction === 'service') {
@@ -724,9 +694,7 @@
                     switchServiceTab('overview');
                     showScreen('screen-service');
                 } else if (pinTargetAction === 'settings') {
-                    switchSettingsTab('horaires');
                     renderScheduleTable();
-                    await renderCadencesForm();
                     document.getElementById('modal-settings').classList.remove('hidden');
                 } else if (pinTargetAction === 'reset') {
                     localStorage.clear();
@@ -747,22 +715,6 @@
         function openSettingsPinPrompt() { openPinModal('settings', 'Code PIN - Paramètres ⚙️'); }
         function confirmResetDatabasePinPrompt() { openPinModal('reset', 'Sécurité : PIN pour effacer'); }
         function closeSettings() { document.getElementById('modal-settings').classList.add('hidden'); }
-
-        async function switchSettingsTab(tab) {
-            document.getElementById('settings-tab-horaires').classList.remove('active');
-            document.getElementById('settings-tab-cadences').classList.remove('active');
-            document.getElementById('settings-content-horaires').classList.add('hidden');
-            document.getElementById('settings-content-cadences').classList.add('hidden');
-
-            if (tab === 'horaires') {
-                document.getElementById('settings-tab-horaires').classList.add('active');
-                document.getElementById('settings-content-horaires').classList.remove('hidden');
-            } else {
-                document.getElementById('settings-tab-cadences').classList.add('active');
-                document.getElementById('settings-content-cadences').classList.remove('hidden');
-                await renderCadencesForm();
-            }
-        }
 
         function generateHourOptions(selectedHour) {
             let html = '';
@@ -837,74 +789,6 @@
             alert("Horaires enregistrés avec succès !");
             closeSettings();
             renderStatistics();
-        }
-
-        async function renderCadencesForm() {
-            const container = document.getElementById('cadences-config-container');
-            container.innerHTML = '<p style="font-size:12px; color:#64748b;">Chargement depuis le serveur...</p>';
-
-            let serverCadences = {};
-            try {
-                let { data, error } = await db.from('machine_cadences').select('*');
-                if (!error && data) {
-                    data.forEach(item => {
-                        if (!serverCadences[item.machine_name]) serverCadences[item.machine_name] = {};
-                        serverCadences[item.machine_name][item.format] = item.cadence;
-                    });
-                }
-            } catch (e) {
-                console.error("Erreur chargement cadences serveur:", e);
-            }
-
-            container.innerHTML = '';
-            for (let mach in PRODUCT_TYPES_MAP) {
-                let htmlItems = '';
-                PRODUCT_TYPES_MAP[mach].forEach(prod => {
-                    let val = (serverCadences[mach] && serverCadences[mach][prod] !== undefined) ? serverCadences[mach][prod] : 0;
-                    htmlItems += `
-                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
-                            <span>${prod} :</span>
-                            <input type="number" id="cad_${mach}_${prod}" value="${val}" min="0" style="width: 80px; padding: 4px; text-align: center; border: 1px solid #cbd5e1; border-radius: 6px;">
-                        </div>
-                    `;
-                });
-                container.innerHTML += `
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px;">
-                        <strong style="font-size: 13px; color: #1e293b; display: block; margin-bottom: 6px;">${mach}</strong>
-                        ${htmlItems}
-                    </div>
-                `;
-            }
-        }
-
-        async function saveCadencesSettings() {
-            let upsertList = [];
-            for (let mach in PRODUCT_TYPES_MAP) {
-                PRODUCT_TYPES_MAP[mach].forEach(prod => {
-                    let inputEl = document.getElementById(`cad_${mach}_${prod}`);
-                    if (inputEl) {
-                        let val = parseFloat(inputEl.value) || 0;
-                        upsertList.push({
-                            machine_name: mach,
-                            format: prod,
-                            cadence: val
-                        });
-                    }
-                });
-            }
-
-            try {
-                let { error } = await db.from('machine_cadences').upsert(upsertList, { onConflict: 'machine_name,format' });
-                if (error) {
-                    alert("Erreur lors de l'enregistrement sur le serveur : " + error.message);
-                } else {
-                    alert("Cadences enregistrées sur le serveur avec succès !");
-                    closeSettings();
-                    renderStatistics();
-                }
-            } catch (e) {
-                alert("Erreur de connexion au serveur.");
-            }
         }
 
         function timeToMinutes(timeStr) {
@@ -1037,17 +921,6 @@
             document.getElementById('qty-container').style.display = 'none';
             document.getElementById('start-btn').classList.add('hidden');
             
-            const formatSelect = document.getElementById('format-select');
-            formatSelect.innerHTML = '';
-            if (PRODUCT_TYPES_MAP[machineName]) {
-                PRODUCT_TYPES_MAP[machineName].forEach(fmt => {
-                    formatSelect.innerHTML += `<option value="${fmt}">${fmt}</option>`;
-                });
-                document.getElementById('format-container').style.display = 'block';
-            } else {
-                document.getElementById('format-container').style.display = 'none';
-            }
-
             renderHistory();
             showScreen('screen-workspace');
         }
@@ -1060,11 +933,9 @@
             if(data) {
                 targetQty = data.target_qty || 500; 
                 initialTargetQty = data.initial_target_qty || (targetQty + (data.produced_qty || 0));
-                currentProductFormat = data.product_format || "";
             } else {
                 targetQty = 500;
                 initialTargetQty = 500;
-                currentProductFormat = "";
             }
 
             let newTeamStr = currentOperator;
@@ -1076,7 +947,7 @@
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-suspended";
             statusBox.innerHTML = `
-                <p>OF repris (J+1) : ${currentOF} ${currentProductFormat ? '('+currentProductFormat+')' : ''}</p>
+                <p>OF repris (J+1) : ${currentOF}</p>
                 <p style="margin-top: 5px;">Reste à produire : ${targetQty} pièces (Total OF : ${initialTargetQty})</p>
                 <p style="margin-top: 5px; font-size: 13px;">Équipe du jour : ${newTeamStr}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #6d28d9;">Statut : Reprise - En attente de Play ⏳</p>
@@ -1095,10 +966,6 @@
             const ofVal = document.getElementById('of-input').value.trim();
             if (ofVal === "" || ofVal === "MO/") { alert("Veuillez saisir un numéro d'OF."); return; }
             currentOF = ofVal;
-            
-            const formatEl = document.getElementById('format-select');
-            currentProductFormat = formatEl ? formatEl.value : "";
-
             document.getElementById('qty-container').style.display = 'block';
             document.getElementById('start-btn').classList.remove('hidden');
             buildTeamChips();
@@ -1115,6 +982,10 @@
 
         function toggleTeamChip(btn) { btn.classList.toggle('selected'); }
 
+        function getSelectedTeamString() {
+            return currentOperator || "Atelier";
+        }
+
         async function startProduction() {
             const qtyVal = document.getElementById('qty-input').value.trim();
             if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Veuillez saisir une quantité cible valide."); return; }
@@ -1127,7 +998,6 @@
                 status: 'waiting',
                 status_text: 'En attente de démarrage ⏳',
                 of: currentOF,
-                product_format: currentProductFormat,
                 team: teamStr,
                 target_qty: targetQty,
                 initial_target_qty: initialTargetQty,
@@ -1140,7 +1010,7 @@
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-waiting";
             statusBox.innerHTML = `
-                <p>OF en cours : ${currentOF} ${currentProductFormat ? '('+currentProductFormat+')' : ''}</p>
+                <p>OF en cours : ${currentOF}</p>
                 <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
                 <p style="margin-top: 5px; font-size: 13px;">Équipe : ${teamStr}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #475569;">Statut : En attente de démarrage ⏳</p>
@@ -1155,6 +1025,23 @@
         }
 
         async function onPlayClick() {
+            if (isPaused && pauseStartTime) {
+                let pauseDurationMin = Math.round((new Date() - pauseStartTime) / 60000);
+                let excessMin = 0;
+
+                if (window.currentPauseMotif === 'Pause ☕') {
+                    if (pauseDurationMin > 10) excessMin = pauseDurationMin - 10;
+                } else if (window.currentPauseMotif === 'Pause repas 🍽️') {
+                    if (pauseDurationMin > 60) excessMin = pauseDurationMin - 60;
+                } else {
+                    excessMin = pauseDurationMin;
+                }
+
+                if (excessMin > 0) {
+                    console.log(`Dépassement de pause enregistré : +${excessMin} min.`);
+                }
+            }
+
             if(!timeStartFilling) { timeStartFilling = new Date(); }
             isPaused = false;
             pauseStartTime = null;
@@ -1162,7 +1049,7 @@
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-play";
             statusBox.innerHTML = `
-                <p>OF en cours : ${currentOF} ${currentProductFormat ? '('+currentProductFormat+')' : ''}</p>
+                <p>OF en cours : ${currentOF}</p>
                 <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
                 <p style="margin-top: 5px; font-size: 13px;">Équipe : ${currentOperator}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #065f46;">Statut : En Remplissage 🚀</p>
@@ -1192,7 +1079,7 @@
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-pause";
             statusBox.innerHTML = `
-                <p>OF en cours : ${currentOF} ${currentProductFormat ? '('+currentProductFormat+')' : ''}</p>
+                <p>OF en cours : ${currentOF}</p>
                 <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
                 <p style="margin-top: 5px; font-size: 13px;">Équipe : ${currentOperator}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #b45309;">Statut : Pause - ${motif} ⏸</p>
@@ -1226,7 +1113,7 @@
                 let interimRecord = {
                     date: todayDateStr,
                     machine_name: currentMachine,
-                    of: currentOF + (currentProductFormat ? ' ('+currentProductFormat+')' : ''),
+                    of: currentOF,
                     team: teamStr,
                     time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                     time_carton_start: new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
@@ -1249,7 +1136,6 @@
                     status: 'suspended',
                     status_text: 'Suspendu - Fin de journée 🏡',
                     of: currentOF,
-                    product_format: currentProductFormat,
                     team: teamStr,
                     target_qty: remainingQty,
                     initial_target_qty: initialTargetQty,
@@ -1333,17 +1219,16 @@
             let todayDateStr = new Date().toISOString().split('T')[0];
             let globalTarget = initialTargetQty > 0 ? initialTargetQty : (good + (targetQty - good));
 
+            // STATS AU FORMAT TEXTE PROPRE SANS BALISES HTML
             let statsText = `${good} / ${globalTarget}`;
             if (good < expectedRemainingQty) {
                 statsText += ` (Écart : -${expectedRemainingQty - good})`;
             }
 
-            let displayOFLabel = currentOF + (currentProductFormat ? ' (' + currentProductFormat + ')' : '');
-
             let newRecord = {
                 date: todayDateStr,
                 machine_name: currentMachine,
-                of: displayOFLabel,
+                of: currentOF,
                 team: teamStr,
                 time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 time_carton_start: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
@@ -1404,7 +1289,6 @@
             let payload = Object.assign({
                 machine_name: currentMachine,
                 of: currentOF,
-                product_format: currentProductFormat,
                 team: currentOperator
             }, fieldsToUpdate);
             await db.from('machines_status').upsert(payload);
@@ -1432,6 +1316,7 @@
 
                 serviceRealtimeChannel = db.channel('public:machines_status')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'machines_status' }, (payload) => {
+                        console.log('Changement détecté en direct sur les machines !', payload);
                         renderOverviewMachines();
                     })
                     .subscribe();
@@ -1478,7 +1363,7 @@
                     else if (st.status === 'waiting') cardClass = "status-pause";
 
                     statusText = st.status_text || statusText;
-                    ofText = (st.of || '-') + (st.product_format ? ' (' + st.product_format + ')' : '');
+                    ofText = st.of || ofText;
                     teamText = st.team || teamText;
                 }
 
@@ -1594,40 +1479,13 @@
                 if (data) { records = data.filter(r => isDateInPeriod(r.date, currentStatsPeriod)); }
             } catch (e) {}
 
-            let serverCadences = {};
-            try {
-                let { data } = await db.from('machine_cadences').select('*');
-                if (data) {
-                    data.forEach(item => {
-                        if (!serverCadences[item.machine_name]) serverCadences[item.machine_name] = {};
-                        serverCadences[item.machine_name][item.format] = item.cadence;
-                    });
-                }
-            } catch (e) {}
-
             let totalGood = 0, totalTarget = 0, totalWaste = 0, totalSmedMinutes = 0, totalRunMinutes = 0;
             records.forEach(r => {
                 totalGood += (r.good_qty || 0);
+                totalTarget += (r.target_qty || 0);
                 totalWaste += (r.waste_bt_qty || 0) + (r.waste_cap_qty || 0);
                 totalSmedMinutes += (r.smed_value_minutes || 0);
                 totalRunMinutes += (r.run_time_minutes || 0);
-
-                let machCadences = serverCadences[r.machine_name];
-                let refCadence = 0;
-                if (machCadences) {
-                    for (let prodKey in machCadences) {
-                        if (r.of.toLowerCase().includes(prodKey.toLowerCase())) {
-                            refCadence = machCadences[prodKey];
-                            break;
-                        }
-                    }
-                }
-
-                if (refCadence > 0) {
-                    totalTarget += refCadence * (r.run_time_minutes || 0);
-                } else {
-                    totalTarget += (r.target_qty || 0);
-                }
             });
 
             let openingMinutes = currentStatsPeriod === 'day' ? getOpeningMinutesForToday() : (getOpeningMinutesForToday() * 5);
