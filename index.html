@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suivi d'Atelier - Production</title>
     
+    <!-- Intégration du client Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         * {
             box-sizing: border-box;
@@ -80,11 +83,22 @@
         
         .logo-box { 
             background: #f8fafc; 
-            padding: 25px; 
+            padding: 20px; 
             border-radius: 12px; 
             margin: 20px 0; 
             border: 2px dashed #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
         }
+        .logo-box img {
+            max-width: 90%;
+            max-height: 90px;
+            object-fit: contain;
+            display: block;
+        }
+        
         .hint { color: #64748b; font-size: 14px; margin-top: 15px; font-weight: 500; }
         
         .btn-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 20px; }
@@ -131,7 +145,6 @@
         .machine-card.status-conditioning { border-left-color: #d97706; background: #fff7ed; }
         .machine-card.status-stop { border-left-color: #94a3b8; background: #f8fafc; }
 
-        /* Statuts dynamiques pour l'écran de running */
         #running-status { background: #f1f5f9; border: 2px solid #94a3b8; padding: 20px; border-radius: 12px; margin-bottom: 20px; color: #475569; font-weight: 600; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s; }
         #running-status.status-waiting { background: #f1f5f9; border-color: #94a3b8; color: #475569; }
         #running-status.status-play { background: #f0fdf4; border-color: #10b981; color: #065f46; }
@@ -193,7 +206,6 @@
         .btn-danger { background-color: #ef4444; color: white; border: none; padding: 12px; width: 100%; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
         .btn-danger:hover { background-color: #dc2626; }
 
-        /* Pavé Numérique Tactile (Pop-up) */
         .keypad-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); display: flex; justify-content: center; align-items: center; z-index: 200; }
         .keypad-box { background: white; padding: 20px; border-radius: 16px; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
         .keypad-display { font-size: 22px; font-weight: bold; background: #f8fafc; border: 2px solid #cbd5e1; padding: 12px; border-radius: 10px; margin-bottom: 15px; color: #1e293b; letter-spacing: 1px; min-height: 52px; display: flex; align-items: center; justify-content: center; }
@@ -217,7 +229,7 @@
         <div id="screen-welcome" onclick="goToOperators()">
             <h2>Suivi de Production</h2>
             <div class="logo-box">
-                <img src="logo.png" alt="Logo Entreprise" style="max-width: 100%; max-height: 80px; display: block; margin: 0 auto;">
+                <img src="logo.png" alt="Logo Entreprise">
             </div>
             <p class="hint">Cliquez sur le logo pour démarrer</p>
         </div>
@@ -237,7 +249,7 @@
             <span class="back-link" onclick="showScreen('screen-welcome')">Retour</span>
         </div>
 
-        <!-- ÉCRAN 2.5 : CHOIX ACTION OPÉRATEUR (Machines ou Mes Stats) -->
+        <!-- ÉCRAN 2.5 : HUB OPÉRATEUR -->
         <div id="screen-operator-hub" class="hidden">
             <h2 id="operator-hub-title">Espace Opérateur</h2>
             <p class="hint">Que souhaitez-vous faire ?</p>
@@ -252,9 +264,7 @@
         <div id="screen-machine" class="hidden">
             <h2>Choix de la Machine</h2>
             <p id="operator-greeting" class="hint"></p>
-            <div class="btn-grid" id="machines-selection-grid">
-                <!-- Généré dynamiquement -->
-            </div>
+            <div class="btn-grid" id="machines-selection-grid"></div>
             <span class="back-link" onclick="showScreen('screen-operator-hub')">Retour</span>
         </div>
 
@@ -267,12 +277,10 @@
                 <button class="service-tab-btn" id="tab-btn-stats" onclick="switchServiceTab('stats')">Statistiques</button>
             </div>
 
-            <!-- VUE D'ENSEMBLE -->
             <div id="service-content-overview">
                 <div class="overview-grid" id="overview-machines-container"></div>
             </div>
 
-            <!-- HISTORIQUE GLOBAL -->
             <div id="service-content-history" class="hidden">
                 <div class="filter-panel">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -291,7 +299,6 @@
                 </div>
             </div>
 
-            <!-- STATISTIQUES AVANCÉES -->
             <div id="service-content-stats" class="hidden">
                 <div class="stats-container">
                     <div class="stats-toolbar">
@@ -313,7 +320,6 @@
                         </div>
                     </div>
 
-                    <!-- 6 KPIs alignés -->
                     <div class="kpi-grid">
                         <div class="kpi-card highlight"><div class="kpi-label">TRS</div><div class="kpi-value" id="kpi-trs">-</div></div>
                         <div class="kpi-card highlight"><div class="kpi-label">TRG</div><div class="kpi-value" id="kpi-trg">-</div></div>
@@ -323,7 +329,6 @@
                         <div class="kpi-card time-card"><div class="kpi-label">Temps Utile</div><div class="kpi-value" id="kpi-useful-time">-</div></div>
                     </div>
 
-                    <!-- Pertes de cadence : Pourcentage ET Minutes -->
                     <div class="pareto-box">
                         <h4>📉 Pertes de Cadence, Rebuts & SMED / Inter-OF</h4>
                         <div class="pareto-item"><div class="pareto-info"><span id="lbl-loss-1">Micro-arrêts bouteilles</span><span id="val-loss-1">0% (0 min)</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-loss-1" style="width: 0%;"></div></div></div>
@@ -331,7 +336,6 @@
                         <div class="pareto-item" style="margin-top: 8px;"><div class="pareto-info"><span>⏱️ SMED / Temps Inter-OF</span><span id="val-smed-share">0% (0 min)</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-smed-share" style="width: 0%; background: #d97706;"></div></div></div>
                     </div>
 
-                    <!-- Pareto des Motifs d'Arrêts Imprévus -->
                     <div class="pareto-box">
                         <h4>🛑 Pareto des Motifs d'Arrêts Imprévus</h4>
                         <div class="pareto-item"><div class="pareto-info"><span>Casse / réglage étiquette</span><span id="val-stop-1">0%</span></div><div class="pareto-bar-bg"><div class="pareto-bar-fill" id="bar-stop-1" style="width: 0%;"></div></div></div>
@@ -398,7 +402,7 @@
             <span class="back-link" onclick="resetWorkspace()" style="margin-top: 20px;">Quitter / Annuler l'OF</span>
         </div>
 
-        <!-- ÉCRAN 6 : MES STATISTIQUES OPÉRATEUR -->
+        <!-- ÉCRAN 6 : MES STATISTIQUES -->
         <div id="screen-operator-stats" class="hidden">
             <h2 id="operator-stats-title">📊 Mes Statistiques</h2>
             <div class="filter-panel" style="margin-bottom: 15px;">
@@ -424,7 +428,7 @@
         </div>
     </div>
 
-    <!-- MODALES & PAVÉ NUMÉRIQUE -->
+    <!-- MODALES -->
     <div id="modal-keypad" class="keypad-modal hidden">
         <div class="keypad-box">
             <div class="keypad-display" id="keypad-display-val">0</div>
@@ -495,13 +499,20 @@
                 <button class="app-btn machine" style="width: 100%; padding: 12px; font-size: 15px;" onclick="saveScheduleSettings()">💾 Enregistrer les horaires</button>
             </div>
             <div class="form-group" style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-                <button class="btn-danger" onclick="confirmResetDatabase()">🗑️ Vider la base de données Locale</button>
+                <button class="btn-danger" onclick="confirmResetDatabase()">🗑️ Vider le stockage local</button>
             </div>
             <span class="back-link" onclick="closeSettings()" style="display:block; text-align:center;">Fermer</span>
         </div>
     </div>
 
     <script>
+        // --- CONFIGURATION SUPABASE ---
+        const SUPABASE_URL = 'https://mfgcdovlikzuolcgtbdg.supabase.co';
+        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_BsA0ZewkDkHd3dxrjmIjpA_v0BhfBZD';
+        
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
         const MACHINES_LIST = ['E-fill SW 10ml 1', 'E-fill SW 10ml 2', 'E-fill 50/30ml', 'K-net'];
         const ALL_OPERATORS = ['Céline', 'Adrien', 'Alexis', 'Nicolas', 'Jordan'];
         const ADMIN_PIN = "2518";
@@ -511,7 +522,7 @@
             { day: 'Mardi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
             { day: 'Mercredi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
             { day: 'Jeudi', start: '08:30', end: '17:30', meal: '01:00', pause: '00:20' },
-            { day: 'Vendredi', start: '08:30', end: '11:30', meal: '00:00', pause: '00:00' }
+            { day: 'Vendredi', start: '08:30', end: '11:30', meal: '00:00', pause: '00:20' }
         ];
 
         let currentOperator = "";
@@ -528,7 +539,7 @@
         let timeStartFilling = null;
         let timeStopFilling = null;
         let timeEndCarton = null;
-        let lastOperatorEndTime = {}; // Mémorise la dernière fin d'OF de chaque opérateur pour son SMED personnel
+        let lastOperatorEndTime = JSON.parse(localStorage.getItem('atelier_last_op_ends') || '{}');
 
         function updateClock() {
             const now = new Date();
@@ -559,19 +570,22 @@
             showScreen('screen-operator-stats');
         }
 
-        function renderOperatorStats() {
+        async function renderOperatorStats() {
             const selectedDate = document.getElementById('op-stats-date').value;
             let opRecords = [];
 
-            MACHINES_LIST.forEach(mach => {
-                let records = JSON.parse(localStorage.getItem('history_' + mach) || '[]');
-                records.forEach(r => {
-                    if (r.date === selectedDate && r.team && r.team.includes(currentOperator)) {
-                        r.machineName = mach;
-                        opRecords.push(r);
-                    }
-                });
-            });
+            try {
+                let { data, error } = await db
+                    .from('production_history')
+                    .select('*')
+                    .eq('date', selectedDate);
+                
+                if (!error && data) {
+                    opRecords = data.filter(r => r.team && r.team.includes(currentOperator));
+                }
+            } catch (e) {
+                console.error("Erreur lecture Supabase:", e);
+            }
 
             let totalGood = 0;
             let totalTime = 0;
@@ -582,14 +596,14 @@
                 tbody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8; font-style: italic;">Aucune production enregistrée pour vous ce jour.</td></tr>';
             } else {
                 opRecords.forEach(r => {
-                    totalGood += (r.goodQty || 0);
-                    totalTime += (r.runTimeMinutes || 0);
+                    totalGood += (r.good_qty || 0);
+                    totalTime += (r.run_time_minutes || 0);
                     tbody.innerHTML += `
                         <tr>
-                            <td style="font-size:11px; font-weight:600; color:#3b82f6;">${r.machineName}</td>
+                            <td style="font-size:11px; font-weight:600; color:#3b82f6;">${r.machine_name}</td>
                             <td><strong>${r.of}</strong></td>
                             <td style="font-size:11px;">${r.team}</td>
-                            <td><strong>${r.goodQty || 0}</strong> pcs</td>
+                            <td><strong>${r.good_qty || 0}</strong> pcs</td>
                         </tr>
                     `;
                 });
@@ -659,7 +673,6 @@
             let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
             const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
             let todayName = daysMap[new Date().getDay()];
-            
             let dayConfig = schedule.find(s => s.day === todayName);
             if (!dayConfig) return 480;
 
@@ -670,7 +683,6 @@
 
             let grossMin = endMin - startMin;
             if (grossMin < 0) grossMin = 0;
-
             let opening = grossMin - mealMin - pauseMin;
             return opening > 0 ? opening : 480;
         }
@@ -680,19 +692,18 @@
             const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
             let todayName = daysMap[new Date().getDay()];
             let dayConfig = schedule.find(s => s.day === todayName);
-            return dayConfig ? timeToMinutes(dayConfig.start) : (8 * 60 + 30); // 08:30 par défaut
+            return dayConfig ? timeToMinutes(dayConfig.start) : (8 * 60 + 30);
         }
 
         function confirmResetDatabase() {
-            const pinCheck = prompt("Sécurité : Saisissez le code PIN pour effacer TOUTES les données locales :");
+            const pinCheck = prompt("Sécurité : Saisissez le code PIN pour effacer les données locales :");
             if (pinCheck === ADMIN_PIN) {
                 localStorage.clear();
-                alert("Base de données locale réinitialisée !");
+                alert("Stockage local réinitialisé !");
                 location.reload();
             } else if (pinCheck !== null) { alert("Code incorrect."); }
         }
 
-        // --- GESTION DU PAVÉ NUMÉRIQUE TACTILE ---
         function openKeypad(inputId, isMO) {
             keypadTargetInputId = inputId;
             keypadIsPrefixedMO = isMO;
@@ -712,25 +723,16 @@
         }
 
         function keypadPress(digit) {
-            if (keypadCurrentValue === "0") {
-                keypadCurrentValue = digit;
-            } else {
-                keypadCurrentValue += digit;
-            }
+            if (keypadCurrentValue === "0") { keypadCurrentValue = digit; }
+            else { keypadCurrentValue += digit; }
             updateKeypadDisplay();
         }
 
-        function keypadClear() {
-            keypadCurrentValue = "";
-            updateKeypadDisplay();
-        }
+        function keypadClear() { keypadCurrentValue = ""; updateKeypadDisplay(); }
 
         function keypadBack() {
-            if (keypadCurrentValue.length > 1) {
-                keypadCurrentValue = keypadCurrentValue.slice(0, -1);
-            } else {
-                keypadCurrentValue = "";
-            }
+            if (keypadCurrentValue.length > 1) { keypadCurrentValue = keypadCurrentValue.slice(0, -1); }
+            else { keypadCurrentValue = ""; }
             updateKeypadDisplay();
         }
 
@@ -740,25 +742,33 @@
             closeKeypad();
         }
 
-        function closeKeypad() {
-            document.getElementById('modal-keypad').classList.add('hidden');
-        }
+        function closeKeypad() { document.getElementById('modal-keypad').classList.add('hidden'); }
 
-        // --- CHOIX DE MACHINE AVEC VÉRIFICATION DU STATUT OCCUPÉ ---
-        function prepareMachineSelection() {
+        async function prepareMachineSelection() {
             const container = document.getElementById('machines-selection-grid');
             container.innerHTML = '';
+
+            let machinesStatusMap = {};
+            try {
+                let { data, error } = await db.from('machines_status').select('*');
+                if (!error && data) {
+                    data.forEach(item => { machinesStatusMap[item.machine_name] = item; });
+                }
+            } catch (e) {
+                console.error("Erreur récupération statuts:", e);
+            }
+
             MACHINES_LIST.forEach(mach => {
-                let st = JSON.parse(localStorage.getItem('status_' + mach) || 'null');
+                let st = machinesStatusMap[mach];
                 let isBusy = st && (st.status === 'play' || st.status === 'pause' || st.status === 'conditioning' || st.status === 'waiting');
                 
                 if (isBusy) {
                     container.innerHTML += `
                         <div style="display: flex; gap: 8px;">
                             <button class="app-btn machine machine-disabled" style="flex: 1;" disabled>
-                                ${mach} <br><span style="font-size:11px; font-weight:normal;">🔴 En cours de production</span>
+                                ${mach} <br><span style="font-size:11px; font-weight:normal;">🔴 ${st.status_text || 'En cours'}</span>
                             </button>
-                            <button class="app-btn" style="background: #ef4444; padding: 0 15px; font-size: 14px;" onclick="forceUnlockMachine('${mach}')" title="Débloquer si bloqué par erreur">🔓</button>
+                            <button class="app-btn" style="background: #ef4444; padding: 0 15px; font-size: 14px;" onclick="forceUnlockMachine('${mach}')" title="Débloquer si bloqué">🔓</button>
                         </div>
                     `;
                 } else {
@@ -772,9 +782,9 @@
             showScreen('screen-machine');
         }
 
-        function forceUnlockMachine(machName) {
+        async function forceUnlockMachine(machName) {
             if (confirm("Voulez-vous vraiment libérer / débloquer la machine " + machName + " ?")) {
-                localStorage.removeItem('status_' + machName);
+                await db.from('machines_status').delete().eq('machine_name', machName);
                 prepareMachineSelection();
             }
         }
@@ -817,28 +827,23 @@
             return selected.length === 0 ? currentOperator : selected.join(' & ');
         }
 
-        // --- DÉMARRAGE EN DEUX ÉTAPES : PRÉPARATION ---
-        function startProduction() {
+        async function startProduction() {
             const qtyVal = document.getElementById('qty-input').value.trim();
             if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Veuillez saisir une quantité cible valide."); return; }
             targetQty = parseInt(qtyVal);
             let teamStr = getSelectedTeamString();
 
             let statusData = {
+                machine_name: currentMachine,
                 status: 'waiting',
-                statusText: 'En attente de démarrage ⏳',
+                status_text: 'En attente de démarrage ⏳',
                 of: currentOF,
-                team: teamStr,
-                timeStart: '-'
+                team: teamStr
             };
 
-            localStorage.setItem('status_' + currentMachine, JSON.stringify(statusData));
+            await db.from('machines_status').upsert(statusData);
 
             document.getElementById('running-title').innerText = currentMachine + " - " + teamStr;
-            document.getElementById('running-info-of').innerText = "OF en cours : " + currentOF;
-            document.getElementById('running-info-qty').innerText = "Objectif : " + targetQty + " pièces";
-            document.getElementById('running-info-team').innerText = "Équipe : " + teamStr;
-
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-waiting";
             statusBox.innerHTML = `
@@ -856,11 +861,8 @@
             showScreen('screen-running');
         }
 
-        // --- APPUI SUR PLAY : LANCEMENT DU CYCLE ---
-        function onPlayClick() {
-            if(!timeStartFilling) {
-                timeStartFilling = new Date();
-            }
+        async function onPlayClick() {
+            if(!timeStartFilling) { timeStartFilling = new Date(); }
             isPaused = false;
             
             let statusBox = document.getElementById('running-status');
@@ -876,13 +878,13 @@
             document.getElementById('btn-pause-square').className = "control-square-btn btn-pause";
             document.getElementById('btn-stop-square').className = "control-square-btn btn-stop";
 
-            updateMachineStatusFieldLocal({ status: 'play', statusText: 'En Remplissage 🚀' });
+            await updateMachineStatusSupabase({ status: 'play', status_text: 'En Remplissage 🚀' });
         }
 
         function onPauseClick() { document.getElementById('modal-pause').classList.remove('hidden'); }
         function closePauseModal() { document.getElementById('modal-pause').classList.add('hidden'); }
 
-        function selectMotif(motif) {
+        async function selectMotif(motif) {
             if(motif === 'Autre') {
                 let custom = prompt("Précisez le motif d'arrêt :");
                 if(custom) motif = "Autre : " + custom;
@@ -903,17 +905,17 @@
             document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
             document.getElementById('btn-play-square').className = "control-square-btn btn-play";
             
-            updateMachineStatusFieldLocal({ status: 'pause', statusText: 'Pause : ' + motif });
+            await updateMachineStatusSupabase({ status: 'pause', status_text: 'Pause : ' + motif });
         }
 
-        function onStopFillingClick() {
+        async function onStopFillingClick() {
             if(confirm("Confirmez-vous la fin du remplissage ?")) {
                 timeStopFilling = new Date();
                 document.getElementById('btn-stop-square').className = "control-square-btn btn-stop btn-disabled";
                 document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
                 document.getElementById('conditioning-panel').classList.remove('hidden');
 
-                updateMachineStatusFieldLocal({ status: 'conditioning', statusText: 'Conditionnement 📦' });
+                await updateMachineStatusSupabase({ status: 'conditioning', status_text: 'Conditionnement 📦' });
             }
         }
 
@@ -922,7 +924,7 @@
             document.getElementById('modal-closing').classList.remove('hidden');
         }
 
-        function validateAndCloseOF() {
+        async function validateAndCloseOF() {
             timeEndCarton = new Date();
             const good = parseInt(document.getElementById('closing-good').value) || 0;
             const wasteBt = parseInt(document.getElementById('closing-waste-bt').value) || 0;
@@ -931,80 +933,86 @@
             const fillingMin = Math.round((timeStopFilling - (timeStartFilling || timeStopFilling)) / 60000);
             const cartonMin = Math.round((timeEndCarton - timeStopFilling) / 60000);
 
-            // Calcul fin du SMED centré sur l'opérateur (ou sur l'ouverture de l'atelier si premier OF de la journée)
             let smedMin = 0;
             let startTimeMin = (timeStartFilling || new Date()).getHours() * 60 + (timeStartFilling || new Date()).getMinutes();
 
             if (lastOperatorEndTime[currentOperator]) {
-                // S'il y a un OF précédent fait par cet opérateur aujourd'hui, on calcule l'écart personnel
-                smedMin = Math.round(((timeStartFilling || new Date()) - lastOperatorEndTime[currentOperator]) / 60000);
+                let lastEnd = new Date(lastOperatorEndTime[currentOperator]);
+                smedMin = Math.round(((timeStartFilling || new Date()) - lastEnd) / 60000);
             } else {
-                // Premier OF de la journée pour cet opérateur : écart par rapport à l'ouverture de l'atelier (ex: 8h30)
                 let workshopStartMin = getWorkshopStartMinutesToday();
                 smedMin = startTimeMin - workshopStartMin;
             }
             if (smedMin < 0) smedMin = 0;
 
-            lastOperatorEndTime[currentOperator] = timeEndCarton;
+            lastOperatorEndTime[currentOperator] = timeEndCarton.toISOString();
+            localStorage.setItem('atelier_last_op_ends', JSON.stringify(lastOperatorEndTime));
 
             let teamStr = getSelectedTeamString();
             let todayDateStr = new Date().toISOString().split('T')[0];
 
             let newRecord = {
                 date: todayDateStr,
+                machine_name: currentMachine,
                 of: currentOF,
                 team: teamStr,
-                timeFillStart: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
-                timeCartonStart: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
+                time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
+                time_carton_start: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 filling: fillingMin + "m",
                 carton: cartonMin + "m",
                 smed: smedMin + "m",
-                smedValueMinutes: smedMin,
-                stats: `<strong>${good}</strong> / ${targetQty}<br><span style="font-size:11px; color:#475569; display:inline-flex; align-items:center; gap:4px; justify-content:center;"><img src="bouteille.png" style="width:40px; height:40px; object-fit:contain;"> ${wasteBt} | <img src="bouchon.png" style="width:40px; height:40px; object-fit:contain;"> ${wasteCap}</span>`,
-                goodQty: good,
-                wasteBtQty: wasteBt,
-                wasteCapQty: wasteCap,
-                targetQty: parseInt(targetQty),
-                runTimeMinutes: fillingMin + cartonMin
+                smed_value_minutes: smedMin,
+                stats: `<strong>${good}</strong> / ${targetQty}<br><span style="font-size:11px; color:#475569;">Bout: ${wasteBt} | Bouch: ${wasteCap}</span>`,
+                good_qty: good,
+                waste_bt_qty: wasteBt,
+                waste_cap_qty: wasteCap,
+                target_qty: parseInt(targetQty),
+                run_time_minutes: fillingMin + cartonMin
             };
 
-            let historyKey = 'history_' + currentMachine;
-            let records = JSON.parse(localStorage.getItem(historyKey) || '[]');
-            records.push(newRecord);
-            localStorage.setItem(historyKey, JSON.stringify(records));
+            await db.from('production_history').insert([newRecord]);
+            await db.from('machines_status').delete().eq('machine_name', currentMachine);
 
-            // Libération de la machine
-            localStorage.removeItem('status_' + currentMachine);
             timeStartFilling = null;
-
             document.getElementById('modal-closing').classList.add('hidden');
-            alert("OF " + currentOF + " clôturé et enregistré ! La machine est de nouveau disponible.");
+            alert("OF " + currentOF + " clôturé et enregistré sur Supabase !");
             showScreen('screen-operator-hub');
         }
 
-        function renderHistory() {
+        async function renderHistory() {
             const tbody = document.getElementById('history-tbody');
-            let historyData = JSON.parse(localStorage.getItem('history_' + currentMachine) || '[]');
-            
-            if (historyData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré aujourd\'hui.</td></tr>';
-                return;
+            try {
+                let { data, error } = await db
+                    .from('production_history')
+                    .select('*')
+                    .eq('machine_name', currentMachine)
+                    .order('id', { ascending: false });
+
+                if (error || !data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = '';
+                data.forEach(row => {
+                    tbody.innerHTML += `<tr>
+                        <td><strong>${row.of}</strong></td><td>${row.team}</td>
+                        <td>${row.filling}<br><span style="font-size:10px; color:#64748b;">${row.time_fill_start}</span></td>
+                        <td>${row.carton}<br><span style="font-size:10px; color:#64748b;">${row.time_carton_start}</span></td>
+                        <td style="color: #d97706; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
+                    </tr>`;
+                });
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="6" style="color: red;">Erreur de connexion Supabase</td></tr>';
             }
-            tbody.innerHTML = '';
-            historyData.forEach(row => {
-                tbody.innerHTML += `<tr>
-                    <td><strong>${row.of}</strong></td><td>${row.team}</td>
-                    <td>${row.filling}<br><span style="font-size:10px; color:#64748b;">${row.timeFillStart}</span></td>
-                    <td>${row.carton}<br><span style="font-size:10px; color:#64748b;">${row.timeCartonStart}</span></td>
-                    <td style="color: #d97706; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
-                </tr>`;
-            });
         }
 
-        function updateMachineStatusFieldLocal(fieldsToUpdate) {
-            let current = JSON.parse(localStorage.getItem('status_' + currentMachine) || '{}');
-            let updated = Object.assign({}, current, fieldsToUpdate);
-            localStorage.setItem('status_' + currentMachine, JSON.stringify(updated));
+        async function updateMachineStatusSupabase(fieldsToUpdate) {
+            let payload = Object.assign({
+                machine_name: currentMachine,
+                of: currentOF,
+                team: getSelectedTeamString()
+            }, fieldsToUpdate);
+            await db.from('machines_status').upsert(payload);
         }
 
         function switchServiceTab(tabName) {
@@ -1035,11 +1043,19 @@
             }
         }
 
-        function renderOverviewMachines() {
+        async function renderOverviewMachines() {
             const container = document.getElementById('overview-machines-container');
+            container.innerHTML = '<p style="color:#64748b; font-size:13px;">Chargement en direct...</p>';
+
+            let statuses = {};
+            try {
+                let { data } = await db.from('machines_status').select('*');
+                if (data) { data.forEach(s => statuses[s.machine_name] = s); }
+            } catch (e) {}
+
             container.innerHTML = '';
             MACHINES_LIST.forEach(mach => {
-                let st = JSON.parse(localStorage.getItem('status_' + mach) || 'null');
+                let st = statuses[mach];
                 let cardClass = "status-stop";
                 let statusText = "À l'arrêt / Disponible";
                 let ofText = "-";
@@ -1050,9 +1066,8 @@
                     else if (st.status === 'pause') cardClass = "status-pause";
                     else if (st.status === 'conditioning') cardClass = "status-conditioning";
                     else if (st.status === 'waiting') cardClass = "status-pause";
-                    else cardClass = "status-stop";
 
-                    statusText = st.statusText || statusText;
+                    statusText = st.status_text || statusText;
                     ofText = st.of || ofText;
                     teamText = st.team || teamText;
                 }
@@ -1079,38 +1094,46 @@
             });
         }
 
-        function renderGlobalHistory() {
-            let allRecords = [];
+        async function renderGlobalHistory() {
             const selectedDate = document.getElementById('global-date-filter').value;
             const checkboxes = document.querySelectorAll('.machine-filter-chk');
             let activeMachines = [];
             checkboxes.forEach(chk => { if(chk.checked) activeMachines.push(chk.value); });
 
-            MACHINES_LIST.forEach(mach => {
-                if (!activeMachines.includes(mach)) return;
-                let machData = JSON.parse(localStorage.getItem('history_' + mach) || '[]');
-                machData.forEach(item => { item.machineName = mach; allRecords.push(item); });
-            });
-
             const tbody = document.getElementById('global-history-tbody');
-            tbody.innerHTML = '';
+            tbody.innerHTML = '<tr><td colspan="7">Chargement...</td></tr>';
 
-            let filteredRecords = allRecords.filter(r => selectedDate ? (r.date === selectedDate) : true);
+            try {
+                let { data, error } = await db
+                    .from('production_history')
+                    .select('*')
+                    .eq('date', selectedDate)
+                    .order('id', { ascending: false });
 
-            if (filteredRecords.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré.</td></tr>';
-                return;
+                if (error || !data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré pour cette date.</td></tr>';
+                    return;
+                }
+
+                let filtered = data.filter(r => activeMachines.includes(r.machine_name));
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun résultat pour les machines sélectionnées.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                filtered.forEach(row => {
+                    tbody.innerHTML += `<tr>
+                        <td style="font-size:11px; font-weight:600; color:#3b82f6;">${row.machine_name}</td>
+                        <td><strong>${row.of}</strong></td><td style="font-size:11px;">${row.team}</td>
+                        <td>${row.filling}<br><span style="font-size:9px; color:#64748b;">${row.time_fill_start}</span></td>
+                        <td>${row.carton}<br><span style="font-size:9px; color:#64748b;">${row.time_carton_start}</span></td>
+                        <td style="color: #d97706; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
+                    </tr>`;
+                });
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="7" style="color: red;">Erreur de chargement Supabase</td></tr>';
             }
-
-            filteredRecords.forEach(row => {
-                tbody.innerHTML += `<tr>
-                    <td style="font-size:11px; font-weight:600; color:#3b82f6;">${row.machineName}</td>
-                    <td><strong>${row.of}</strong></td><td style="font-size:11px;">${row.team}</td>
-                    <td>${row.filling}<br><span style="font-size:9px; color:#64748b;">${row.timeFillStart}</span></td>
-                    <td>${row.carton}<br><span style="font-size:9px; color:#64748b;">${row.timeCartonStart}</span></td>
-                    <td style="color: #d97706; font-weight: 600;">${row.smed}</td><td>${row.stats}</td>
-                </tr>`;
-            });
         }
 
         function buildStatsMachineOptions() {
@@ -1130,9 +1153,8 @@
             if (!dateStr) return true;
             let recordDate = new Date(dateStr);
             let now = new Date();
-            if (period === 'day') {
-                return recordDate.toDateString() === now.toDateString();
-            } else if (period === 'week') {
+            if (period === 'day') { return recordDate.toDateString() === now.toDateString(); }
+            else if (period === 'week') {
                 let startOfWeek = new Date(now);
                 let day = now.getDay() || 7;
                 if(day !== 1) startOfWeek.setHours(-24 * (day - 1));
@@ -1145,29 +1167,26 @@
             return true;
         }
 
-        function renderStatistics() {
+        async function renderStatistics() {
             const perimeter = document.getElementById('stats-perimeter-select').value;
             let records = [];
 
-            if (perimeter === 'atelier') {
-                MACHINES_LIST.forEach(mach => {
-                    let machData = JSON.parse(localStorage.getItem('history_' + mach) || '[]');
-                    records = records.concat(machData);
-                });
-            } else if (perimeter.startsWith('machine_')) {
-                let machName = perimeter.replace('machine_', '');
-                records = JSON.parse(localStorage.getItem('history_' + machName) || '[]');
-            }
-
-            records = records.filter(r => isDateInPeriod(r.date, currentStatsPeriod));
+            try {
+                let query = db.from('production_history').select('*');
+                if (perimeter.startsWith('machine_')) {
+                    query = query.eq('machine_name', perimeter.replace('machine_', ''));
+                }
+                let { data } = await query;
+                if (data) { records = data.filter(r => isDateInPeriod(r.date, currentStatsPeriod)); }
+            } catch (e) {}
 
             let totalGood = 0, totalTarget = 0, totalWaste = 0, totalSmedMinutes = 0, totalRunMinutes = 0;
             records.forEach(r => {
-                totalGood += (r.goodQty || 0);
-                totalTarget += (r.targetQty || 0);
-                totalWaste += (r.wasteBtQty || 0) + (r.wasteCapQty || 0);
-                totalSmedMinutes += (r.smedValueMinutes || 0);
-                totalRunMinutes += (r.runTimeMinutes || 0);
+                totalGood += (r.good_qty || 0);
+                totalTarget += (r.target_qty || 0);
+                totalWaste += (r.waste_bt_qty || 0) + (r.waste_cap_qty || 0);
+                totalSmedMinutes += (r.smed_value_minutes || 0);
+                totalRunMinutes += (r.run_time_minutes || 0);
             });
 
             let openingMinutes = currentStatsPeriod === 'day' ? getOpeningMinutesForToday() : (getOpeningMinutesForToday() * 5);
@@ -1224,7 +1243,7 @@
 
         function resetWorkspace() {
             if (confirm("Voulez-vous vraiment quitter / annuler cet OF en cours ?")) { 
-                localStorage.removeItem('status_' + currentMachine);
+                db.from('machines_status').delete().eq('machine_name', currentMachine);
                 timeStartFilling = null;
                 showScreen('screen-operator-hub'); 
             }
