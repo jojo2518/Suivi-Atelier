@@ -919,7 +919,7 @@
             showScreen('screen-workspace');
         }
 
-        async function resumeSuspendedMachine(machineName, ofNum, teamStr) {
+        async function resumeSuspendedMachine(machineName, ofNum, previousTeam) {
             currentMachine = machineName;
             currentOF = ofNum;
             
@@ -932,15 +932,19 @@
                 initialTargetQty = 500;
             }
 
-            alert(`Bonjour !\nReprise de l'OF en cours (${currentOF}).\nIl reste ${targetQty} pièces à produire sur les ${initialTargetQty} initiales.\n\nCliquez sur OK pour lancer la production.`);
+            // Mise à jour de l'équipe active dans Supabase avec l'opérateur du jour (ex: Jordan)
+            let newTeamStr = currentOperator;
+            await db.from('machines_status').update({ team: newTeamStr }).eq('machine_name', currentMachine);
 
-            document.getElementById('running-title').innerText = currentMachine + " - " + teamStr;
+            alert(`Bonjour ${currentOperator} !\nReprise de l'OF en cours (${currentOF}) entamé par ${previousTeam || 'la veille'}.\nIl reste ${targetQty} pièces à produire sur les ${initialTargetQty} initiales.\n\nCliquez sur OK pour lancer la production.`);
+
+            document.getElementById('running-title').innerText = currentMachine + " - " + newTeamStr;
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-suspended";
             statusBox.innerHTML = `
                 <p>OF repris (J+1) : ${currentOF}</p>
                 <p style="margin-top: 5px;">Reste à produire : ${targetQty} pièces (Total OF : ${initialTargetQty})</p>
-                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${teamStr}</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe du jour : ${newTeamStr}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #6d28d9;">Statut : Reprise - En attente de Play ⏳</p>
             `;
 
@@ -1099,7 +1103,7 @@
                 let remainingQty = initialTargetQty - producedSoFar;
                 if (remainingQty < 0) remainingQty = 0;
 
-                // 1. Enregistrement intermédiaire dans l'historique pour comptabiliser les pièces du jour dans le TRS
+                // 1. Enregistrement intermédiaire dans l'historique lié à l'équipe/opérateur actuel (ex: Céline)
                 let fillingMin = timeStartFilling ? Math.round((new Date() - timeStartFilling) / 60000) : 30;
                 let todayDateStr = new Date().toISOString().split('T')[0];
                 let teamStr = getSelectedTeamString();
@@ -1108,7 +1112,7 @@
                     date: todayDateStr,
                     machine_name: currentMachine,
                     of: currentOF,
-                    team: teamStr,
+                    team: teamStr, // Conserve proprement le nom de l'opérateur de la veille
                     time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                     time_carton_start: new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                     filling: fillingMin + "m",
@@ -1125,7 +1129,7 @@
 
                 await db.from('production_history').insert([interimRecord]);
 
-                // 2. Mise à jour de la machine en état "suspended" avec le reste à faire
+                // 2. Mise à jour de la machine en état "suspended" avec l'équipe actuelle pour traçabilité de reprise
                 let { error } = await db.from('machines_status').upsert({
                     machine_name: currentMachine,
                     status: 'suspended',
@@ -1159,7 +1163,6 @@
         }
 
         function openClosingModal() {
-            // Si c'était un OF repris, on pré-remplit avec l'objectif global initial
             let defaultCloseQty = initialTargetQty > 0 ? initialTargetQty : targetQty;
             document.getElementById('closing-good').value = defaultCloseQty;
             document.getElementById('modal-closing').classList.remove('hidden');
@@ -1189,7 +1192,7 @@
             lastOperatorEndTime[currentOperator] = timeEndCarton.toISOString();
             localStorage.setItem('atelier_last_op_ends', JSON.stringify(lastOperatorEndTime));
 
-            let teamStr = getSelectedTeamString();
+            let teamStr = getSelectedTeamString(); // Équipe qui clôture (ex: Jordan)
             let todayDateStr = new Date().toISOString().split('T')[0];
             let globalTarget = initialTargetQty > 0 ? initialTargetQty : targetQty;
 
@@ -1197,7 +1200,7 @@
                 date: todayDateStr,
                 machine_name: currentMachine,
                 of: currentOF,
-                team: teamStr,
+                team: teamStr, // Enregistre bien l'opérateur de clôture (Jordan) pour cette tranche
                 time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 time_carton_start: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 filling: fillingMin + "m",
