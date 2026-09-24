@@ -298,7 +298,7 @@
                 <div style="overflow-x: auto; max-height: 300px;">
                     <table class="history-table">
                         <thead>
-                            <tr><th>Mach.</th><th>OF</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod / Rebuts</th></tr>
+                            <tr><th>Mach.</th><th>OF / Format</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod / Rebuts</th></tr>
                         </thead>
                         <tbody id="global-history-tbody"></tbody>
                     </table>
@@ -364,6 +364,11 @@
                 </div>
             </div>
 
+            <div class="form-group" id="format-container" style="display: none;">
+                <label for="format-select">Format / Type de produit :</label>
+                <select id="format-select" class="app-input" style="background: #fff; font-weight: bold; cursor: pointer;"></select>
+            </div>
+
             <div class="form-group" id="qty-container" style="display: none;">
                 <label for="qty-input">Quantité cible à produire :</label>
                 <input type="text" id="qty-input" class="app-input" placeholder="Ex: 500" readonly onclick="openKeypad('qty-input', false)" style="cursor: pointer; font-weight: bold;">
@@ -379,7 +384,7 @@
                 <h4>📊 Historique du jour sur la machine</h4>
                 <div style="overflow-x: auto; max-height: 180px;">
                     <table class="history-table">
-                        <thead><tr><th>OF</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod & Rebuts</th></tr></thead>
+                        <thead><tr><th>OF / Format</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod & Rebuts</th></tr></thead>
                         <tbody id="history-tbody"><tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF validé pour l'instant aujourd'hui.</td></tr></tbody>
                     </table>
                 </div>
@@ -426,7 +431,7 @@
                 <h4>Historique de mes OF (Jour)</h4>
                 <div style="overflow-x: auto; max-height: 220px;">
                     <table class="history-table">
-                        <thead><tr><th>Mach.</th><th>OF</th><th>Équipe</th><th>Prod</th></tr></thead>
+                        <thead><tr><th>Mach.</th><th>OF / Format</th><th>Équipe</th><th>Prod</th></tr></thead>
                         <tbody id="op-stats-tbody"><tr><td colspan="4" style="color: #94a3b8; font-style: italic;">Aucune production enregistrée.</td></tr></tbody>
                     </table>
                 </div>
@@ -585,6 +590,7 @@
         let currentOperator = "";
         let currentMachine = "";
         let currentOF = "";
+        let currentProductFormat = "";
         let targetQty = 0;
         let initialTargetQty = 0; 
         let isPaused = false;
@@ -1031,6 +1037,18 @@
             document.getElementById('qty-container').style.display = 'none';
             document.getElementById('start-btn').classList.add('hidden');
             
+            // Remplir dynamiquement le select des formats selon la machine
+            const formatSelect = document.getElementById('format-select');
+            formatSelect.innerHTML = '';
+            if (PRODUCT_TYPES_MAP[machineName]) {
+                PRODUCT_TYPES_MAP[machineName].forEach(fmt => {
+                    formatSelect.innerHTML += `<option value="${fmt}">${fmt}</option>`;
+                });
+                document.getElementById('format-container').style.display = 'block';
+            } else {
+                document.getElementById('format-container').style.display = 'none';
+            }
+
             renderHistory();
             showScreen('screen-workspace');
         }
@@ -1043,9 +1061,11 @@
             if(data) {
                 targetQty = data.target_qty || 500; 
                 initialTargetQty = data.initial_target_qty || (targetQty + (data.produced_qty || 0));
+                currentProductFormat = data.product_format || "";
             } else {
                 targetQty = 500;
                 initialTargetQty = 500;
+                currentProductFormat = "";
             }
 
             let newTeamStr = currentOperator;
@@ -1057,7 +1077,7 @@
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-suspended";
             statusBox.innerHTML = `
-                <p>OF repris (J+1) : ${currentOF}</p>
+                <p>OF repris (J+1) : ${currentOF} ${currentProductFormat ? '('+currentProductFormat+')' : ''}</p>
                 <p style="margin-top: 5px;">Reste à produire : ${targetQty} pièces (Total OF : ${initialTargetQty})</p>
                 <p style="margin-top: 5px; font-size: 13px;">Équipe du jour : ${newTeamStr}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #6d28d9;">Statut : Reprise - En attente de Play ⏳</p>
@@ -1076,6 +1096,10 @@
             const ofVal = document.getElementById('of-input').value.trim();
             if (ofVal === "" || ofVal === "MO/") { alert("Veuillez saisir un numéro d'OF."); return; }
             currentOF = ofVal;
+            
+            const formatEl = document.getElementById('format-select');
+            currentProductFormat = formatEl ? formatEl.value : "";
+
             document.getElementById('qty-container').style.display = 'block';
             document.getElementById('start-btn').classList.remove('hidden');
             buildTeamChips();
@@ -1104,6 +1128,7 @@
                 status: 'waiting',
                 status_text: 'En attente de démarrage ⏳',
                 of: currentOF,
+                product_format: currentProductFormat,
                 team: teamStr,
                 target_qty: targetQty,
                 initial_target_qty: initialTargetQty,
@@ -1116,7 +1141,7 @@
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-waiting";
             statusBox.innerHTML = `
-                <p>OF en cours : ${currentOF}</p>
+                <p>OF en cours : ${currentOF} ${currentProductFormat ? '('+currentProductFormat+')' : ''}</p>
                 <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
                 <p style="margin-top: 5px; font-size: 13px;">Équipe : ${teamStr}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #475569;">Statut : En attente de démarrage ⏳</p>
@@ -1138,7 +1163,7 @@
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-play";
             statusBox.innerHTML = `
-                <p>OF en cours : ${currentOF}</p>
+                <p>OF en cours : ${currentOF} ${currentProductFormat ? '('+currentProductFormat+')' : ''}</p>
                 <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
                 <p style="margin-top: 5px; font-size: 13px;">Équipe : ${currentOperator}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #065f46;">Statut : En Remplissage 🚀</p>
@@ -1168,7 +1193,7 @@
             let statusBox = document.getElementById('running-status');
             statusBox.className = "status-pause";
             statusBox.innerHTML = `
-                <p>OF en cours : ${currentOF}</p>
+                <p>OF en cours : ${currentOF} ${currentProductFormat ? '('+currentProductFormat+')' : ''}</p>
                 <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
                 <p style="margin-top: 5px; font-size: 13px;">Équipe : ${currentOperator}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #b45309;">Statut : Pause - ${motif} ⏸</p>
@@ -1202,7 +1227,7 @@
                 let interimRecord = {
                     date: todayDateStr,
                     machine_name: currentMachine,
-                    of: currentOF,
+                    of: currentOF + (currentProductFormat ? ' ('+currentProductFormat+')' : ''),
                     team: teamStr,
                     time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                     time_carton_start: new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
@@ -1225,6 +1250,7 @@
                     status: 'suspended',
                     status_text: 'Suspendu - Fin de journée 🏡',
                     of: currentOF,
+                    product_format: currentProductFormat,
                     team: teamStr,
                     target_qty: remainingQty,
                     initial_target_qty: initialTargetQty,
@@ -1313,10 +1339,12 @@
                 statsText += ` (Écart : -${expectedRemainingQty - good})`;
             }
 
+            let displayOFLabel = currentOF + (currentProductFormat ? ' (' + currentProductFormat + ')' : '');
+
             let newRecord = {
                 date: todayDateStr,
                 machine_name: currentMachine,
-                of: currentOF,
+                of: displayOFLabel,
                 team: teamStr,
                 time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
                 time_carton_start: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
@@ -1377,6 +1405,7 @@
             let payload = Object.assign({
                 machine_name: currentMachine,
                 of: currentOF,
+                product_format: currentProductFormat,
                 team: currentOperator
             }, fieldsToUpdate);
             await db.from('machines_status').upsert(payload);
@@ -1450,7 +1479,7 @@
                     else if (st.status === 'waiting') cardClass = "status-pause";
 
                     statusText = st.status_text || statusText;
-                    ofText = st.of || ofText;
+                    ofText = (st.of || '-') + (st.product_format ? ' (' + st.product_format + ')' : '');
                     teamText = st.team || teamText;
                 }
 
@@ -1566,7 +1595,7 @@
                 if (data) { records = data.filter(r => isDateInPeriod(r.date, currentStatsPeriod)); }
             } catch (e) {}
 
-            // Récupération des cadences depuis le serveur Supabase pour le calcul
+            // Récupération des cadences serveur pour le calcul précis de la performance
             let serverCadences = {};
             try {
                 let { data } = await db.from('machine_cadences').select('*');
@@ -1589,7 +1618,7 @@
                 let refCadence = 0;
                 if (machCadences) {
                     for (let prodKey in machCadences) {
-                        if (r.of.toLowerCase().includes(prodKey.toLowerCase()) || (r.stats && r.stats.toLowerCase().includes(prodKey.toLowerCase()))) {
+                        if (r.of.toLowerCase().includes(prodKey.toLowerCase())) {
                             refCadence = machCadences[prodKey];
                             break;
                         }
