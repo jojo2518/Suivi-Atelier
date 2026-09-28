@@ -207,6 +207,8 @@
         .schedule-table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px; }
         .schedule-table th, .schedule-table td { border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center; font-size: 11px; }
         .schedule-table th { background: #f1f5f9; font-weight: 600; }
+        .time-select-group { display: flex; align-items: center; justify-content: center; gap: 2px; }
+        .time-select-group select { padding: 3px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; }
 
         .btn-danger { background-color: #ef4444; color: white; border: none; padding: 12px; width: 100%; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
         .btn-danger:hover { background-color: #dc2626; }
@@ -501,11 +503,15 @@
                 <input type="text" id="closing-good" class="app-input" value="500" readonly onclick="openKeypad('closing-good', false)" style="cursor: pointer; font-weight: bold;">
             </div>
             <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 8px;">🧴 Rebuts bouteilles :</label>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    🧴 Rebuts bouteilles :
+                </label>
                 <input type="text" id="closing-waste-bt" class="app-input" value="0" readonly onclick="openKeypad('closing-waste-bt', false)" style="cursor: pointer; font-weight: bold;">
             </div>
             <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 8px;">🔘 Rebuts bouchons :</label>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    🔘 Rebuts bouchons :
+                </label>
                 <input type="text" id="closing-waste-cap" class="app-input" value="0" readonly onclick="openKeypad('closing-waste-cap', false)" style="cursor: pointer; font-weight: bold;">
             </div>
             <button class="app-btn machine" style="width: 100%; margin-top: 10px;" onclick="validateAndCloseOF()">Enregistrer & Clôturer</button>
@@ -602,12 +608,6 @@
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(screenId).classList.remove('hidden');
-            
-            if (screenId === 'screen-service') {
-                renderServiceOverview();
-                renderGlobalHistory();
-                renderStatistics();
-            }
         }
 
         function goToOperators() { showScreen('screen-operator'); }
@@ -630,358 +630,52 @@
             let opRecords = [];
 
             try {
-                let { data, error } = await db.from('production_history')
+                let { data, error } = await db
+                    .from('production_history')
                     .select('*')
-                    .eq('operator', currentOperator);
+                    .eq('date', selectedDate);
                 
                 if (!error && data) {
-                    opRecords = data.filter(r => r.date === selectedDate);
+                    opRecords = data.filter(r => r.team && r.team.includes(currentOperator));
                 }
             } catch (e) {
-                console.error("Erreur récupération stats opérateur Supabase:", e);
+                console.error("Erreur lecture Supabase:", e);
             }
 
             let totalGood = 0;
-            let totalTimeMin = 0;
-            let tbodyHtml = "";
+            let totalTime = 0;
+            const tbody = document.getElementById('op-stats-tbody');
+            tbody.innerHTML = '';
 
             if (opRecords.length === 0) {
-                tbodyHtml = `<tr><td colspan="4" style="color: #94a3b8; font-style: italic;">Aucune production enregistrée pour cette date.</td></tr>`;
+                tbody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8; font-style: italic;">Aucune production enregistrée pour vous ce jour.</td></tr>';
             } else {
                 opRecords.forEach(r => {
                     totalGood += (r.good_qty || 0);
-                    totalTimeMin += (r.duration_min || 0);
-                    tbodyHtml += `<tr>
-                        <td>${r.machine || '-'}</td>
-                        <td><b>${r.of_number || '-'}</b></td>
-                        <td>${r.team || '-'}</td>
-                        <td><span style="color: #10b981; font-weight: bold;">+${r.good_qty || 0}</span></td>
-                    </tr>`;
+                    totalTime += (r.run_time_minutes || 0);
+
+                    let isDiscrepancy = r.stats && r.stats.includes('Écart');
+                    let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
+
+                    tbody.innerHTML += `
+                        <tr class="${rowClass}">
+                            <td style="font-size:11px; font-weight:600; color:#3b82f6;">${r.machine_name}</td>
+                            <td><strong>${r.of}</strong></td>
+                            <td style="font-size:11px;">${r.team}</td>
+                            <td><strong>${r.stats || (r.good_qty + ' pcs')}</strong></td>
+                        </tr>
+                    `;
                 });
             }
 
             document.getElementById('op-stat-good').innerText = totalGood;
-            document.getElementById('op-stat-time').innerText = totalTimeMin + " min";
-            document.getElementById('op-stats-tbody').innerHTML = tbodyHtml;
+            document.getElementById('op-stat-time').innerText = totalTime + " min";
         }
 
-        function prepareMachineSelection() {
-            let html = "";
-            MACHINES_LIST.forEach(m => {
-                html += `<button class="app-btn machine" onclick="selectMachine('${m}')">${m}</button>`;
-            });
-            document.getElementById('machines-selection-grid').innerHTML = html;
-            showScreen('screen-machine');
-        }
-
-        function selectMachine(name) {
-            currentMachine = name;
-            document.getElementById('workspace-title').innerText = "Machine : " + currentMachine;
-            document.getElementById('of-input').value = "MO/";
-            document.getElementById('qty-container').style.display = 'none';
-            document.getElementById('start-btn').classList.add('hidden');
-            renderMachineHistory();
-            showScreen('screen-workspace');
-        }
-
-        function openKeypad(inputId, isMo) {
-            keypadTargetInputId = inputId;
-            keypadIsPrefixedMO = isMo;
-            let val = document.getElementById(inputId).value;
-            if (isMo && val.startsWith("MO/")) {
-                keypadCurrentValue = val.replace("MO/", "");
-            } else {
-                keypadCurrentValue = val === "0" ? "" : val;
-            }
-            updateKeypadDisplay();
-            document.getElementById('modal-keypad').classList.remove('hidden');
-        }
-
-        function updateKeypadDisplay() {
-            let display = keypadCurrentValue === "" ? "0" : keypadCurrentValue;
-            if (keypadIsPrefixedMO) {
-                display = "MO/" + display;
-            }
-            document.getElementById('keypad-display-val').innerText = display;
-        }
-
-        function keypadPress(digit) {
-            if (keypadCurrentValue === "0") keypadCurrentValue = "";
-            keypadCurrentValue += digit;
-            updateKeypadDisplay();
-        }
-
-        function keypadClear() {
-            keypadCurrentValue = "";
-            updateKeypadDisplay();
-        }
-
-        function keypadBack() {
-            if (keypadCurrentValue.length > 0) {
-                keypadCurrentValue = keypadCurrentValue.slice(0, -1);
-            }
-            updateKeypadDisplay();
-        }
-
-        function keypadValidate() {
-            let finalVal = keypadCurrentValue;
-            if (keypadIsPrefixedMO) {
-                finalVal = "MO/" + keypadCurrentValue;
-            }
-            document.getElementById(keypadTargetInputId).value = finalVal;
-            closeKeypad();
-            if (keypadTargetInputId === 'of-input') {
-                validateOF();
-            }
-        }
-
-        function closeKeypad() {
-            document.getElementById('modal-keypad').classList.add('hidden');
-        }
-
-        function validateOF() {
-            const val = document.getElementById('of-input').value;
-            if (!val || val === "MO/") {
-                alert("Veuillez saisir un numéro d'OF valide.");
-                return;
-            }
-            currentOF = val;
-            document.getElementById('qty-container').style.display = 'block';
-            document.getElementById('start-btn').classList.remove('hidden');
-            
-            let teamHtml = "";
-            ALL_OPERATORS.forEach(op => {
-                let selectedClass = (op === currentOperator) ? "selected" : "";
-                teamHtml += `<button type="button" class="team-chip ${selectedClass}" onclick="toggleTeamChip(this)">${op}</button>`;
-            });
-            document.getElementById('team-chips-container').innerHTML = teamHtml;
-        }
-
-        function toggleTeamChip(btn) {
-            btn.classList.toggle('selected');
-        }
-
-        function startProduction() {
-            const qtyVal = document.getElementById('qty-input').value;
-            targetQty = parseInt(qtyVal) || 0;
-            if (targetQty <= 0) {
-                alert("Veuillez saisir une quantité cible valide.");
-                return;
-            }
-            initialTargetQty = targetQty;
-            
-            document.getElementById('running-info-of').innerText = "OF : " + currentOF;
-            document.getElementById('running-info-qty').innerText = "Objectif : " + targetQty + " flacons";
-            
-            let selectedTeam = [];
-            document.querySelectorAll('#team-chips-container .team-chip.selected').forEach(chip => {
-                selectedTeam.push(chip.innerText);
-            });
-            document.getElementById('running-info-team').innerText = "Équipe : " + selectedTeam.join(', ');
-            
-            timeStartFilling = new Date();
-            
-            // Configuration visuelle du running screen
-            const statusBox = document.getElementById('running-status');
-            statusBox.className = "status-play";
-            document.getElementById('btn-play-square').classList.add('btn-disabled');
-            document.getElementById('btn-pause-square').classList.remove('btn-disabled');
-            document.getElementById('btn-stop-square').classList.remove('btn-disabled');
-            document.getElementById('conditioning-panel').classList.add('hidden');
-
-            showScreen('screen-running');
-        }
-
-        function resetWorkspace() {
-            showScreen('screen-machine');
-        }
-
-        function onPlayClick() {
-            const statusBox = document.getElementById('running-status');
-            statusBox.className = "status-play";
-            document.getElementById('btn-play-square').classList.add('btn-disabled');
-            document.getElementById('btn-pause-square').classList.remove('btn-disabled');
-            document.getElementById('btn-stop-square').classList.remove('btn-disabled');
-            isPaused = false;
-        }
-
-        function onPauseClick() {
-            document.getElementById('modal-pause').classList.remove('hidden');
-        }
-
-        function selectMotif(motif) {
-            closePauseModal();
-            isPaused = true;
-            const statusBox = document.getElementById('running-status');
-            statusBox.className = "status-pause";
-            statusBox.innerHTML += `<br><small style="color:#b45309;">Arrêt : ${motif}</small>`;
-            document.getElementById('btn-play-square').classList.remove('btn-disabled');
-            document.getElementById('btn-pause-square').classList.add('btn-disabled');
-        }
-
-        function closePauseModal() {
-            document.getElementById('modal-pause').classList.add('hidden');
-        }
-
-        function onStopFillingClick() {
-            timeStopFilling = new Date();
-            const statusBox = document.getElementById('running-status');
-            statusBox.className = "status-pause";
-            document.getElementById('btn-play-square').classList.add('btn-disabled');
-            document.getElementById('btn-pause-square').classList.add('btn-disabled');
-            document.getElementById('btn-stop-square').classList.add('btn-disabled');
-            document.getElementById('conditioning-panel').classList.remove('hidden');
-        }
-
-        function onSuspendDayClick() {
-            if (confirm("Voulez-vous suspendre cet OF pour la journée ?")) {
-                resetWorkspace();
-            }
-        }
-
-        function openClosingModal() {
-            document.getElementById('closing-good').value = targetQty;
-            document.getElementById('closing-waste-bt').value = "0";
-            document.getElementById('closing-waste-cap').value = "0";
-            document.getElementById('modal-closing').classList.remove('hidden');
-        }
-
-        async function validateAndCloseOF() {
-            const goodQty = parseInt(document.getElementById('closing-good').value) || 0;
-            const wasteBt = parseInt(document.getElementById('closing-waste-bt').value) || 0;
-            const wasteCap = parseInt(document.getElementById('closing-waste-cap').value) || 0;
-            
-            document.getElementById('modal-closing').classList.add('hidden');
-            timeEndCarton = new Date();
-
-            let selectedTeam = [];
-            document.querySelectorAll('#team-chips-container .team-chip.selected').forEach(chip => {
-                selectedTeam.push(chip.innerText);
-            });
-
-            const record = {
-                date: new Date().toISOString().split('T')[0],
-                machine: currentMachine,
-                of_number: currentOF,
-                operator: currentOperator,
-                team: selectedTeam.join(', '),
-                good_qty: goodQty,
-                waste_bt: wasteBt,
-                waste_cap: wasteCap,
-                duration_min: Math.round((timeEndCarton - timeStartFilling) / 60000) || 1
-            };
-
-            try {
-                await db.from('production_history').insert([record]);
-            } catch (e) {
-                console.error("Erreur enregistrement production Supabase:", e);
-            }
-
-            resetWorkspace();
-        }
-
-        async function renderMachineHistory() {
-            let tbody = document.getElementById('history-tbody');
-            tbody.innerHTML = `<tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Chargement...</td></tr>`;
-            try {
-                let { data, error } = await db.from('production_history')
-                    .select('*')
-                    .eq('machine', currentMachine)
-                    .order('id', { ascending: false })
-                    .limit(5);
-                
-                if (!error && data && data.length > 0) {
-                    let html = "";
-                    data.forEach(r => {
-                        html += `<tr>
-                            <td><b>${r.of_number}</b></td>
-                            <td>${r.team || '-'}</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td><span style="color:#10b981; font-weight:bold;">+${r.good_qty}</span> (R:${r.waste_bt})</td>
-                        </tr>`;
-                    });
-                    tbody.innerHTML = html;
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré pour cette machine.</td></tr>`;
-                }
-            } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="6" style="color: #ef4444;">Erreur de chargement</td></tr>`;
-            }
-        }
-
-        async function renderGlobalHistory() {
-            let tbody = document.getElementById('global-history-tbody');
-            tbody.innerHTML = `<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Chargement...</td></tr>`;
-            try {
-                let { data, error } = await db.from('production_history')
-                    .select('*')
-                    .order('id', { ascending: false })
-                    .limit(20);
-                
-                if (!error && data && data.length > 0) {
-                    let html = "";
-                    data.forEach(r => {
-                        html += `<tr>
-                            <td>${r.machine}</td>
-                            <td><b>${r.of_number}</b></td>
-                            <td>${r.team || '-'}</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>+${r.good_qty}</td>
-                        </tr>`;
-                    });
-                    tbody.innerHTML = html;
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun historique global.</td></tr>`;
-                }
-            } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="7" style="color: #ef4444;">Erreur chargement historique</td></tr>`;
-            }
-        }
-
-        async function renderServiceOverview() {
-            let container = document.getElementById('overview-machines-container');
-            let html = "";
-            MACHINES_LIST.forEach(m => {
-                html += `<div class="machine-card status-stop">
-                    <strong>🏭 ${m}</strong>
-                    <p style="font-size: 13px; color: #64748b; margin-top: 4px;">État : Arrêtée / En attente</p>
-                </div>`;
-            });
-            container.innerHTML = html;
-        }
-
-        async function renderStatistics() {
-            document.getElementById('kpi-trs').innerText = "78.5%";
-            document.getElementById('kpi-trg').innerText = "72.0%";
-            document.getElementById('kpi-disp').innerText = "88.0%";
-            document.getElementById('kpi-qual').innerText = "98.5%";
-            document.getElementById('kpi-open-time').innerText = "480 min";
-            document.getElementById('kpi-useful-time').innerText = "376 min";
-            
-            // Remplissage select machines
-            let optionsHtml = "";
-            MACHINES_LIST.forEach(m => {
-                optionsHtml += `<option value="${m}">${m}</option>`;
-            });
-            document.getElementById('stats-machines-options').innerHTML = optionsHtml;
-        }
-
-        function openSettingsPinPrompt() {
-            pinTargetAction = 'settings';
+        function openPinModal(actionType, titleText) {
+            pinTargetAction = actionType;
             pinCurrentValue = "";
-            document.getElementById('pin-modal-title').innerText = "Code PIN Paramètres";
-            updatePinDisplay();
-            document.getElementById('modal-pin').classList.remove('hidden');
-        }
-
-        function promptAdminPasswordPin() {
-            pinTargetAction = 'service';
-            pinCurrentValue = "";
-            document.getElementById('pin-modal-title').innerText = "Code PIN Espace Service";
+            document.getElementById('pin-modal-title').innerText = titleText;
             updatePinDisplay();
             document.getElementById('modal-pin').classList.remove('hidden');
         }
@@ -1012,10 +706,17 @@
         function pinValidate() {
             if (pinCurrentValue === ADMIN_PIN) {
                 closePinModal();
-                if (pinTargetAction === 'settings') {
-                    openSettingsModal();
-                } else if (pinTargetAction === 'service') {
+                if (pinTargetAction === 'service') {
+                    currentOperator = "Jordan (Admin)";
+                    switchServiceTab('overview');
                     showScreen('screen-service');
+                } else if (pinTargetAction === 'settings') {
+                    renderScheduleTable();
+                    document.getElementById('modal-settings').classList.remove('hidden');
+                } else if (pinTargetAction === 'reset') {
+                    localStorage.clear();
+                    alert("Stockage local réinitialisé !");
+                    location.reload();
                 }
             } else {
                 alert("Code PIN incorrect.");
@@ -1027,81 +728,939 @@
             document.getElementById('modal-pin').classList.add('hidden');
         }
 
-        function openSettingsModal() {
-            let html = "";
-            atelierSchedule.forEach((s, idx) => {
-                html += `<tr>
-                    <td><b>${s.day}</b></td>
-                    <td><input type="text" value="${s.start}" id="sched-start-${idx}" style="width:50px; text-align:center;"></td>
-                    <td><input type="text" value="${s.end}" id="sched-end-${idx}" style="width:50px; text-align:center;"></td>
-                    <td><input type="text" value="${s.meal}" id="sched-meal-${idx}" style="width:45px; text-align:center;"></td>
-                    <td><input type="text" value="${s.pause}" id="sched-pause-${idx}" style="width:45px; text-align:center;"></td>
-                </tr>`;
-            });
-            document.getElementById('schedule-tbody').innerHTML = html;
-            document.getElementById('modal-settings').classList.remove('hidden');
+        function promptAdminPasswordPin() { openPinModal('service', 'Code PIN - Accès Service 🛠️'); }
+        function openSettingsPinPrompt() { openPinModal('settings', 'Code PIN - Paramètres ⚙️'); }
+        function confirmResetDatabasePinPrompt() { openPinModal('reset', 'Sécurité : PIN pour effacer'); }
+        function closeSettings() { document.getElementById('modal-settings').classList.add('hidden'); }
+
+        function generateHourOptions(selectedHour) {
+            let html = '';
+            for (let h = 0; h < 24; h++) {
+                let hStr = String(h).padStart(2, '0');
+                html += `<option value="${hStr}" ${hStr === selectedHour ? 'selected' : ''}>${hStr}</option>`;
+            }
+            return html;
         }
 
-        function closeSettings() {
-            document.getElementById('modal-settings').classList.add('hidden');
+        function generateMinuteOptions(selectedMinute) {
+            let html = '';
+            for (let m = 0; m < 60; m += 5) {
+                let mStr = String(m).padStart(2, '0');
+                html += `<option value="${mStr}" ${mStr === selectedMinute ? 'selected' : ''}>${mStr}</option>`;
+            }
+            return html;
+        }
+
+        async function renderScheduleTable() {
+            await loadScheduleFromSupabase();
+            const tbody = document.getElementById('schedule-tbody');
+            tbody.innerHTML = '';
+            
+            atelierSchedule.forEach((row, index) => {
+                let startParts = (row.start || "08:30").split(':');
+                let endParts = (row.end || "17:30").split(':');
+                let mealParts = (row.meal || "01:00").split(':');
+                let pauseParts = (row.pause || "00:20").split(':');
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${row.day}</strong></td>
+                        <td>
+                            <div class="time-select-group">
+                                <select id="sch_start_h_${index}">${generateHourOptions(startParts[0])}</select>:
+                                <select id="sch_start_m_${index}">${generateMinuteOptions(startParts[1])}</select>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="time-select-group">
+                                <select id="sch_end_h_${index}">${generateHourOptions(endParts[0])}</select>:
+                                <select id="sch_end_m_${index}">${generateMinuteOptions(endParts[1])}</select>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="time-select-group">
+                                <select id="sch_meal_h_${index}">${generateHourOptions(mealParts[0])}</select>:
+                                <select id="sch_meal_m_${index}">${generateMinuteOptions(mealParts[1])}</select>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="time-select-group">
+                                <select id="sch_pause_h_${index}">${generateHourOptions(pauseParts[0])}</select>:
+                                <select id="sch_pause_m_${index}">${generateMinuteOptions(pauseParts[1])}</select>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
         }
 
         async function saveScheduleSettings() {
-            for (let idx = 0; idx < atelierSchedule.length; idx++) {
-                atelierSchedule[idx].start = document.getElementById(`sched-start-${idx}`).value;
-                atelierSchedule[idx].end = document.getElementById(`sched-end-${idx}`).value;
-                atelierSchedule[idx].meal = document.getElementById(`sched-meal-${idx}`).value;
-                atelierSchedule[idx].pause = document.getElementById(`sched-pause-${idx}`).value;
+            let newSchedule = [];
+            atelierSchedule.forEach((row, index) => {
+                let updatedRow = {
+                    day: row.day,
+                    start: document.getElementById(`sch_start_h_${index}`).value + ':' + document.getElementById(`sch_start_m_${index}`).value,
+                    end: document.getElementById(`sch_end_h_${index}`).value + ':' + document.getElementById(`sch_end_m_${index}`).value,
+                    meal: document.getElementById(`sch_meal_h_${index}`).value + ':' + document.getElementById(`sch_meal_m_${index}`).value,
+                    pause: document.getElementById(`sch_pause_h_${index}`).value + ':' + document.getElementById(`sch_pause_m_${index}`).value
+                };
+                newSchedule.push(updatedRow);
+            });
+
+            let { error } = await db.from('atelier_schedule').upsert(newSchedule);
+            if (error) {
+                alert("Erreur lors de la sauvegarde sur Supabase : " + error.message);
+                return;
             }
+
+            atelierSchedule = newSchedule;
+            alert("Horaires enregistrés et synchronisés sur Supabase avec succès !");
+            closeSettings();
+            renderStatistics();
+        }
+
+        function timeToMinutes(timeStr) {
+            if (!timeStr || !timeStr.includes(':')) return 0;
+            let parts = timeStr.split(':');
+            return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+        }
+
+        function getOpeningMinutesForToday() {
+            const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+            let todayName = daysMap[new Date().getDay()];
+            let dayConfig = atelierSchedule.find(s => s.day === todayName);
+            if (!dayConfig) return 480;
+
+            let startMin = timeToMinutes(dayConfig.start);
+            let endMin = timeToMinutes(dayConfig.end);
+            let mealMin = timeToMinutes(dayConfig.meal);
+            let pauseMin = timeToMinutes(dayConfig.pause);
+
+            let grossMin = endMin - startMin;
+            if (grossMin < 0) grossMin = 0;
+            let opening = grossMin - mealMin - pauseMin;
+            return opening > 0 ? opening : 480;
+        }
+
+        function getWorkshopStartMinutesToday() {
+            const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+            let todayName = daysMap[new Date().getDay()];
+            let dayConfig = atelierSchedule.find(s => s.day === todayName);
+            return dayConfig ? timeToMinutes(dayConfig.start) : (8 * 60 + 30);
+        }
+
+        function openKeypad(inputId, isMO) {
+            keypadTargetInputId = inputId;
+            keypadIsPrefixedMO = isMO;
+            let currentVal = document.getElementById(inputId).value;
+            if (isMO) {
+                keypadCurrentValue = currentVal.startsWith('MO/') ? currentVal.replace('MO/', '') : currentVal;
+            } else {
+                keypadCurrentValue = (currentVal === "" || currentVal === "0") ? "" : currentVal;
+            }
+            updateKeypadDisplay();
+            document.getElementById('modal-keypad').classList.remove('hidden');
+        }
+
+        function updateKeypadDisplay() {
+            let displayStr = keypadIsPrefixedMO ? "MO/" + keypadCurrentValue : (keypadCurrentValue === "" ? "0" : keypadCurrentValue);
+            document.getElementById('keypad-display-val').innerText = displayStr;
+        }
+
+        function keypadPress(digit) {
+            if (keypadCurrentValue === "0") { keypadCurrentValue = digit; }
+            else { keypadCurrentValue += digit; }
+            updateKeypadDisplay();
+        }
+
+        function keypadClear() { keypadCurrentValue = ""; updateKeypadDisplay(); }
+        function keypadBack() {
+            if (keypadCurrentValue.length > 1) { keypadCurrentValue = keypadCurrentValue.slice(0, -1); }
+            else { keypadCurrentValue = ""; }
+            updateKeypadDisplay();
+        }
+        function keypadValidate() {
+            let finalVal = keypadIsPrefixedMO ? "MO/" + keypadCurrentValue : (keypadCurrentValue === "" ? "0" : keypadCurrentValue);
+            document.getElementById(keypadTargetInputId).value = finalVal;
+            closeKeypad();
+        }
+        function closeKeypad() { document.getElementById('modal-keypad').classList.add('hidden'); }
+
+        async function prepareMachineSelection() {
+            const container = document.getElementById('machines-selection-grid');
+            container.innerHTML = '';
+
+            let machinesStatusMap = {};
             try {
-                for (let s of atelierSchedule) {
-                    await db.from('atelier_schedule').upsert(s, { onConflict: 'day' });
+                let { data, error } = await db.from('machines_status').select('*');
+                if (!error && data) {
+                    data.forEach(item => { machinesStatusMap[item.machine_name] = item; });
                 }
-                alert("Horaires enregistrés et synchronisés avec succès !");
-                closeSettings();
             } catch (e) {
-                console.error("Erreur sauvegarde horaires:", e);
-                alert("Erreur lors de la sauvegarde Supabase.");
+                console.error("Erreur récupération statuts:", e);
+            }
+
+            // On stocke globalement pour pouvoir reprendre l'état si besoin
+            window.lastLoadedMachinesStatus = machinesStatusMap;
+
+            MACHINES_LIST.forEach(mach => {
+                let st = machinesStatusMap[mach];
+                let isSuspended = st && st.status === 'suspended';
+                let isBusy = st && (st.status === 'play' || st.status === 'pause' || st.status === 'conditioning' || st.status === 'waiting');
+                
+                if (isSuspended) {
+                    container.innerHTML += `
+                        <button class="app-btn machine machine-suspended" onclick="resumeSuspendedMachine('${mach}', '${st.of}', '${st.team}')">
+                            ${mach} <br><span style="font-size:11px; font-weight:normal;">🏡 OF en suspens : ${st.of}</span>
+                        </button>
+                    `;
+                } else if (isBusy) {
+                    // NOUVEAU : Au lieu d'un bouton désactivé figé, on propose de reprendre la session directement !
+                    container.innerHTML += `
+                        <div style="display: flex; gap: 8px;">
+                            <button class="app-btn machine machine-busy" style="flex: 1;" onclick="resumeActiveMachine('${mach}')">
+                                ${mach} <br><span style="font-size:11px; font-weight:normal;">⚠️ ${st.status_text || 'En cours'} (${st.of}) - Reprendre</span>
+                            </button>
+                            <button class="app-btn" style="background: #ef4444; padding: 0 15px; font-size: 14px;" onclick="forceUnlockMachine('${mach}')" title="Forcer le déblocage">🔓</button>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML += `
+                        <button class="app-btn machine" onclick="selectMachine('${mach}')">
+                            ${mach} <br><span style="font-size:11px; font-weight:normal; opacity:0.8;">🟢 Disponible</span>
+                        </button>
+                    `;
+                }
+            });
+            showScreen('screen-machine');
+        }
+
+        async function resumeActiveMachine(mach) {
+            let st = window.lastLoadedMachinesStatus ? window.lastLoadedMachinesStatus[mach] : null;
+            if (!st) {
+                alert("Impossible de récupérer l'état de la machine.");
+                prepareMachineSelection();
+                return;
+            }
+
+            currentMachine = mach;
+            currentOF = st.of;
+            targetQty = st.target_qty || 500;
+            initialTargetQty = st.initial_target_qty || targetQty;
+            
+            if (!currentOperator && st.team) {
+                currentOperator = st.team;
+            }
+
+            document.getElementById('running-title').innerText = currentMachine + " - " + (currentOperator || st.team);
+            let statusBox = document.getElementById('running-status');
+            let playBtn = document.getElementById('btn-play-square');
+            let pauseBtn = document.getElementById('btn-pause-square');
+            let stopBtn = document.getElementById('btn-stop-square');
+            let condPanel = document.getElementById('conditioning-panel');
+
+            if (st.status === 'play') {
+                statusBox.className = "status-play";
+                statusBox.innerHTML = `
+                    <p>OF en cours : ${currentOF}</p>
+                    <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                    <p style="margin-top: 5px; font-size: 13px;">Équipe : ${st.team}</p>
+                    <p style="margin-top: 8px; font-weight: bold; color: #065f46;">Statut : ${st.status_text || 'En Remplissage 🚀'}</p>
+                `;
+                playBtn.className = "control-square-btn btn-play btn-disabled";
+                pauseBtn.className = "control-square-btn btn-pause";
+                stopBtn.className = "control-square-btn btn-stop";
+                condPanel.classList.add('hidden');
+            } else if (st.status === 'pause') {
+                statusBox.className = "status-pause";
+                statusBox.innerHTML = `
+                    <p>OF en cours : ${currentOF}</p>
+                    <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                    <p style="margin-top: 5px; font-size: 13px;">Équipe : ${st.team}</p>
+                    <p style="margin-top: 8px; font-weight: bold; color: #b45309;">Statut : ${st.status_text || 'En Pause ⏸'}</p>
+                `;
+                playBtn.className = "control-square-btn btn-play";
+                pauseBtn.className = "control-square-btn btn-pause btn-disabled";
+                stopBtn.className = "control-square-btn btn-stop";
+                condPanel.classList.add('hidden');
+            } else if (st.status === 'conditioning') {
+                statusBox.className = "status-play";
+                statusBox.innerHTML = `
+                    <p>OF en cours : ${currentOF}</p>
+                    <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                    <p style="margin-top: 5px; font-size: 13px;">Équipe : ${st.team}</p>
+                    <p style="margin-top: 8px; font-weight: bold; color: #d97706;">Statut : En Conditionnement 📦</p>
+                `;
+                playBtn.className = "control-square-btn btn-play btn-disabled";
+                pauseBtn.className = "control-square-btn btn-pause btn-disabled";
+                stopBtn.className = "control-square-btn btn-stop btn-disabled";
+                condPanel.classList.remove('hidden');
+            } else {
+                statusBox.className = "status-waiting";
+                statusBox.innerHTML = `
+                    <p>OF en cours : ${currentOF}</p>
+                    <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                    <p style="margin-top: 5px; font-size: 13px;">Équipe : ${st.team}</p>
+                    <p style="margin-top: 8px; font-weight: bold; color: #475569;">Statut : En attente de démarrage ⏳</p>
+                `;
+                playBtn.className = "control-square-btn btn-play";
+                pauseBtn.className = "control-square-btn btn-pause btn-disabled";
+                stopBtn.className = "control-square-btn btn-stop btn-disabled";
+                condPanel.classList.add('hidden');
+            }
+
+            if (!timeStartFilling) {
+                timeStartFilling = new Date();
+            }
+
+            showScreen('screen-running');
+        }
+
+        async function forceUnlockMachine(machName) {
+            if (confirm("Voulez-vous vraiment libérer / débloquer la machine " + machName + " (Attention, cela effacera l'état en cours) ?")) {
+                await db.from('machines_status').delete().eq('machine_name', machName);
+                prepareMachineSelection();
             }
         }
 
-        function confirmResetDatabasePinPrompt() {
-            if (confirm("Voulez-vous vraiment vider les données locales ?")) {
-                localStorage.clear();
-                alert("Stockage local vidé.");
-                location.reload();
+        function selectMachine(machineName) {
+            currentMachine = machineName;
+            initialTargetQty = 0;
+            document.getElementById('workspace-title').innerText = currentMachine + " (" + currentOperator + ")";
+            document.getElementById('of-input').value = "MO/";
+            document.getElementById('qty-input').value = "";
+            document.getElementById('qty-container').style.display = 'none';
+            document.getElementById('start-btn').classList.add('hidden');
+            
+            renderHistory();
+            showScreen('screen-workspace');
+        }
+
+        async function resumeSuspendedMachine(machineName, ofNum, previousTeam) {
+            currentMachine = machineName;
+            currentOF = ofNum;
+            
+            let { data } = await db.from('machines_status').select('*').eq('machine_name', currentMachine).single();
+            if(data) {
+                targetQty = data.target_qty || 500; 
+                initialTargetQty = data.initial_target_qty || (targetQty + (data.produced_qty || 0));
+            } else {
+                targetQty = 500;
+                initialTargetQty = 500;
+            }
+
+            let newTeamStr = currentOperator;
+            await db.from('machines_status').update({ team: newTeamStr, status: 'waiting' }).eq('machine_name', currentMachine);
+
+            alert(`Bonjour ${currentOperator} !\nReprise de l'OF en cours (${currentOF}) entamé par ${previousTeam || 'la veille'}.\nIl reste ${targetQty} pièces à produire sur les ${initialTargetQty} initiales.\n\nCliquez sur OK pour lancer la production.`);
+
+            document.getElementById('running-title').innerText = currentMachine + " - " + newTeamStr;
+            let statusBox = document.getElementById('running-status');
+            statusBox.className = "status-suspended";
+            statusBox.innerHTML = `
+                <p>OF repris (J+1) : ${currentOF}</p>
+                <p style="margin-top: 5px;">Reste à produire : ${targetQty} pièces (Total OF : ${initialTargetQty})</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe du jour : ${newTeamStr}</p>
+                <p style="margin-top: 8px; font-weight: bold; color: #6d28d9;">Statut : Reprise - En attente de Play ⏳</p>
+            `;
+
+            document.getElementById('btn-play-square').className = "control-square-btn btn-play";
+            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
+            document.getElementById('btn-stop-square').className = "control-square-btn btn-stop btn-disabled";
+            document.getElementById('conditioning-panel').classList.add('hidden');
+
+            timeStartFilling = new Date();
+            showScreen('screen-running');
+        }
+
+        function validateOF() {
+            const ofVal = document.getElementById('of-input').value.trim();
+            if (ofVal === "" || ofVal === "MO/") { alert("Veuillez saisir un numéro d'OF."); return; }
+            currentOF = ofVal;
+            document.getElementById('qty-container').style.display = 'block';
+            document.getElementById('start-btn').classList.remove('hidden');
+            buildTeamChips();
+        }
+
+        function buildTeamChips() {
+            const container = document.getElementById('team-chips-container');
+            container.innerHTML = '';
+            ALL_OPERATORS.forEach(op => {
+                let isSelected = (op === currentOperator);
+                container.innerHTML += `<button type="button" class="team-chip ${isSelected ? 'selected' : ''}" data-name="${op}" onclick="toggleTeamChip(this)">${op}</button>`;
+            });
+        }
+
+        function toggleTeamChip(btn) { btn.classList.toggle('selected'); }
+
+        function getSelectedTeamString() {
+            return currentOperator || "Atelier";
+        }
+
+        async function startProduction() {
+            const qtyVal = document.getElementById('qty-input').value.trim();
+            if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Veuillez saisir une quantité cible valide."); return; }
+            targetQty = parseInt(qtyVal);
+            initialTargetQty = targetQty;
+            let teamStr = currentOperator;
+
+            let statusData = {
+                machine_name: currentMachine,
+                status: 'waiting',
+                status_text: 'En attente de démarrage ⏳',
+                of: currentOF,
+                team: teamStr,
+                target_qty: targetQty,
+                initial_target_qty: initialTargetQty,
+                produced_qty: 0
+            };
+
+            await db.from('machines_status').upsert(statusData);
+
+            document.getElementById('running-title').innerText = currentMachine + " - " + teamStr;
+            let statusBox = document.getElementById('running-status');
+            statusBox.className = "status-waiting";
+            statusBox.innerHTML = `
+                <p>OF en cours : ${currentOF}</p>
+                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${teamStr}</p>
+                <p style="margin-top: 8px; font-weight: bold; color: #475569;">Statut : En attente de démarrage ⏳</p>
+            `;
+
+            document.getElementById('btn-play-square').className = "control-square-btn btn-play";
+            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
+            document.getElementById('btn-stop-square').className = "control-square-btn btn-stop btn-disabled";
+            document.getElementById('conditioning-panel').classList.add('hidden');
+
+            showScreen('screen-running');
+        }
+
+        async function onPlayClick() {
+            if (isPaused && pauseStartTime) {
+                let pauseDurationMin = Math.round((new Date() - pauseStartTime) / 60000);
+                let excessMin = 0;
+
+                if (window.currentPauseMotif === 'Pause ☕') {
+                    if (pauseDurationMin > 10) excessMin = pauseDurationMin - 10;
+                } else if (window.currentPauseMotif === 'Pause repas 🍽️') {
+                    if (pauseDurationMin > 60) excessMin = pauseDurationMin - 60;
+                } else {
+                    excessMin = pauseDurationMin;
+                }
+
+                if (excessMin > 0) {
+                    console.log(`Dépassement de pause enregistré : +${excessMin} min.`);
+                }
+            }
+
+            if(!timeStartFilling) { timeStartFilling = new Date(); }
+            isPaused = false;
+            pauseStartTime = null;
+            
+            let statusBox = document.getElementById('running-status');
+            statusBox.className = "status-play";
+            statusBox.innerHTML = `
+                <p>OF en cours : ${currentOF}</p>
+                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${currentOperator}</p>
+                <p style="margin-top: 8px; font-weight: bold; color: #065f46;">Statut : En Remplissage 🚀</p>
+            `;
+
+            document.getElementById('btn-play-square').className = "control-square-btn btn-play btn-disabled";
+            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause";
+            document.getElementById('btn-stop-square').className = "control-square-btn btn-stop";
+
+            await updateMachineStatusSupabase({ status: 'play', status_text: 'En Remplissage 🚀' });
+        }
+
+        function onPauseClick() { document.getElementById('modal-pause').classList.remove('hidden'); }
+        function closePauseModal() { document.getElementById('modal-pause').classList.add('hidden'); }
+
+        async function selectMotif(motif) {
+            if(motif === 'Autre') {
+                let custom = prompt("Précisez le motif d'arrêt :");
+                if(custom) motif = "Autre : " + custom;
+                else return;
+            }
+            closePauseModal();
+            isPaused = true;
+            pauseStartTime = new Date();
+            window.currentPauseMotif = motif;
+            
+            let statusBox = document.getElementById('running-status');
+            statusBox.className = "status-pause";
+            statusBox.innerHTML = `
+                <p>OF en cours : ${currentOF}</p>
+                <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${currentOperator}</p>
+                <p style="margin-top: 8px; font-weight: bold; color: #b45309;">Statut : Pause - ${motif} ⏸</p>
+            `;
+
+            document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
+            document.getElementById('btn-play-square').className = "control-square-btn btn-play";
+            
+            await updateMachineStatusSupabase({ status: 'pause', status_text: 'Pause : ' + motif });
+        }
+
+        async function onSuspendDayClick() {
+            if (confirm("Voulez-vous suspendre l'OF pour la fin de journée ? Il pourra être repris demain matin.")) {
+                let userInput = prompt(`Fin de journée : Veuillez saisir la quantité totale déjà produite à date sur l'OF ${currentOF} :`, "0");
+                if (userInput === null) return;
+
+                let producedSoFar = parseInt(userInput, 10);
+                if (isNaN(producedSoFar) || producedSoFar < 0) {
+                    alert("Veuillez entrer un nombre valide.");
+                    return;
+                }
+
+                if (initialTargetQty === 0) initialTargetQty = targetQty;
+                let remainingQty = initialTargetQty - producedSoFar;
+                if (remainingQty < 0) remainingQty = 0;
+
+                let fillingMin = timeStartFilling ? Math.round((new Date() - timeStartFilling) / 60000) : 30;
+                let todayDateStr = new Date().toISOString().split('T')[0];
+                let teamStr = currentOperator;
+
+                let interimRecord = {
+                    date: todayDateStr,
+                    machine_name: currentMachine,
+                    of: currentOF,
+                    team: teamStr,
+                    time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
+                    time_carton_start: new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
+                    filling: fillingMin + "m",
+                    carton: "0m",
+                    smed: "0m",
+                    smed_value_minutes: 0,
+                    stats: `${producedSoFar} / ${initialTargetQty} (Suspendu J-1)`,
+                    good_qty: producedSoFar,
+                    waste_bt_qty: 0,
+                    waste_cap_qty: 0,
+                    target_qty: initialTargetQty,
+                    run_time_minutes: fillingMin
+                };
+
+                await db.from('production_history').insert([interimRecord]);
+
+                let { error } = await db.from('machines_status').upsert({
+                    machine_name: currentMachine,
+                    status: 'suspended',
+                    status_text: 'Suspendu - Fin de journée 🏡',
+                    of: currentOF,
+                    team: teamStr,
+                    target_qty: remainingQty,
+                    initial_target_qty: initialTargetQty,
+                    produced_qty: producedSoFar
+                });
+
+                if (error) {
+                    alert("Erreur lors de la synchronisation avec Supabase : " + error.message);
+                    return;
+                }
+
+                alert(`OF suspendu avec succès !\nQuantité enregistrée pour aujourd'hui : ${producedSoFar} pièces.\nReste à produire demain : ${remainingQty} pièces.`);
+                showScreen('screen-operator-hub');
             }
         }
 
-        function switchServiceTab(tab) {
+        async function onStopFillingClick() {
+            if(confirm("Confirmez-vous la fin du remplissage ?")) {
+                timeStopFilling = new Date();
+                document.getElementById('btn-stop-square').className = "control-square-btn btn-stop btn-disabled";
+                document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
+                document.getElementById('conditioning-panel').classList.remove('hidden');
+
+                await updateMachineStatusSupabase({ status: 'conditioning', status_text: 'Conditionnement 📦' });
+            }
+        }
+
+        let expectedRemainingQty = 0; 
+
+        async function openClosingModal() {
+            let qteRealisee = targetQty; 
+            expectedRemainingQty = targetQty; 
+            
+            try {
+                let { data } = await db.from('machines_status').select('*').eq('machine_name', currentMachine).single();
+                if (data && data.target_qty !== undefined) {
+                    qteRealisee = data.target_qty;
+                    expectedRemainingQty = data.target_qty;
+                }
+            } catch (e) {}
+
+            document.getElementById('closing-good').value = qteRealisee;
+            document.getElementById('modal-closing').classList.add('hidden'); 
+            document.getElementById('modal-closing').classList.remove('hidden');
+        }
+
+        async function validateAndCloseOF() {
+            const good = parseInt(document.getElementById('closing-good').value) || 0;
+            
+            if (good < expectedRemainingQty) {
+                let diff = expectedRemainingQty - good;
+                let confirmation = confirm(`⚠️ ATTENTION : Il manque ${diff} bouteille(s) par rapport à l'objectif restant (${expectedRemainingQty} attendues, ${good} saisies).\n\nVoulez-vous confirmer ce manque et clôturer l'OF ?`);
+                if (!confirmation) {
+                    return; 
+                }
+            }
+
+            timeEndCarton = new Date();
+            const wasteBt = parseInt(document.getElementById('closing-waste-bt').value) || 0;
+            const wasteCap = parseInt(document.getElementById('closing-waste-cap').value) || 0;
+
+            const fillingMin = Math.round((timeStopFilling - (timeStartFilling || timeStopFilling)) / 60000);
+            const cartonMin = Math.round((timeEndCarton - timeStopFilling) / 60000);
+
+            let smedMin = 0;
+            let startTimeMin = (timeStartFilling || new Date()).getHours() * 60 + (timeStartFilling || new Date()).getMinutes();
+            let todayDateStr = new Date().toISOString().split('T')[0];
+
+            let lastDate = lastOperatorEndDate[currentOperator];
+            let isNewDay = !lastDate || lastDate !== todayDateStr;
+
+            if (!isNewDay && lastOperatorEndTime[currentOperator]) {
+                let lastEnd = new Date(lastOperatorEndTime[currentOperator]);
+                smedMin = Math.round(((timeStartFilling || new Date()) - lastEnd) / 60000);
+            } else {
+                let workshopStartMin = getWorkshopStartMinutesToday();
+                smedMin = startTimeMin - workshopStartMin;
+            }
+            if (smedMin < 0) smedMin = 0;
+
+            lastOperatorEndTime[currentOperator] = timeEndCarton.toISOString();
+            lastOperatorEndDate[currentOperator] = todayDateStr;
+            localStorage.setItem('atelier_last_op_ends', JSON.stringify(lastOperatorEndTime));
+            localStorage.setItem('atelier_last_op_dates', JSON.stringify(lastOperatorEndDate));
+
+            let teamStr = currentOperator; 
+            let globalTarget = initialTargetQty > 0 ? initialTargetQty : (good + (targetQty - good));
+
+            let statsText = `${good} / ${globalTarget}`;
+            if (good < expectedRemainingQty) {
+                statsText += ` (Écart : -${expectedRemainingQty - good})`;
+            }
+
+            let newRecord = {
+                date: todayDateStr,
+                machine_name: currentMachine,
+                of: currentOF,
+                team: teamStr,
+                time_fill_start: (timeStartFilling || new Date()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
+                time_carton_start: timeStopFilling.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
+                filling: fillingMin + "m",
+                carton: cartonMin + "m",
+                smed: smedMin + "m",
+                smed_value_minutes: smedMin,
+                stats: statsText,
+                good_qty: good,
+                waste_bt_qty: wasteBt,
+                waste_cap_qty: wasteCap,
+                target_qty: globalTarget,
+                run_time_minutes: fillingMin + cartonMin
+            };
+
+            await db.from('production_history').insert([newRecord]);
+            await db.from('machines_status').delete().eq('machine_name', currentMachine);
+
+            timeStartFilling = null;
+            initialTargetQty = 0;
+            document.getElementById('modal-closing').classList.add('hidden');
+            alert("OF " + currentOF + " clôturé ! Quantité enregistrée pour " + teamStr + " : " + good + " pièces.");
+            showScreen('screen-operator-hub');
+        }
+
+        async function renderHistory() {
+            const tbody = document.getElementById('history-tbody');
+            try {
+                let { data, error } = await db
+                    .from('production_history')
+                    .select('*')
+                    .eq('machine_name', currentMachine)
+                    .order('id', { ascending: false });
+
+                if (error || !data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = '';
+                data.forEach(row => {
+                    let isDiscrepancy = row.stats && row.stats.includes('Écart');
+                    let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
+
+                    tbody.innerHTML += `<tr class="${rowClass}">
+                        <td><strong>${row.of}</strong></td><td>${row.team}</td>
+                        <td>${row.filling}<br><span style="font-size:10px; color:#64748b;">${row.time_fill_start}</span></td>
+                        <td>${row.carton}<br><span style="font-size:10px; color:#64748b;">${row.time_carton_start}</span></td>
+                        <td style="color: #d97706; font-weight: 600;">${row.smed}</td>
+                        <td>${row.stats}<br><span style="font-size:10px; color:#475569;">Bout: ${row.waste_bt_qty} | Bouch: ${row.waste_cap_qty}</span></td>
+                    </tr>`;
+                });
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="6" style="color: red;">Erreur de connexion Supabase</td></tr>';
+            }
+        }
+
+        async function updateMachineStatusSupabase(fieldsToUpdate) {
+            let payload = Object.assign({
+                machine_name: currentMachine,
+                of: currentOF,
+                team: currentOperator
+            }, fieldsToUpdate);
+            await db.from('machines_status').upsert(payload);
+        }
+
+        let serviceRealtimeChannel = null;
+
+        function switchServiceTab(tabName) {
             document.getElementById('tab-btn-overview').classList.remove('active');
             document.getElementById('tab-btn-history').classList.remove('active');
             document.getElementById('tab-btn-stats').classList.remove('active');
-            
             document.getElementById('service-content-overview').classList.add('hidden');
             document.getElementById('service-content-history').classList.add('hidden');
             document.getElementById('service-content-stats').classList.add('hidden');
-            
-            if (tab === 'overview') {
+
+            if (serviceRealtimeChannel) {
+                db.removeChannel(serviceRealtimeChannel);
+                serviceRealtimeChannel = null;
+            }
+
+            if (tabName === 'overview') {
                 document.getElementById('tab-btn-overview').classList.add('active');
                 document.getElementById('service-content-overview').classList.remove('hidden');
-                renderServiceOverview();
-            } else if (tab === 'history') {
+                renderOverviewMachines();
+
+                serviceRealtimeChannel = db.channel('public:machines_status')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines_status' }, (payload) => {
+                        console.log('Changement détecté en direct sur les machines !', payload);
+                        renderOverviewMachines();
+                    })
+                    .subscribe();
+
+            } else if (tabName === 'history') {
                 document.getElementById('tab-btn-history').classList.add('active');
                 document.getElementById('service-content-history').classList.remove('hidden');
+                if(!document.getElementById('global-date-filter').value) {
+                    document.getElementById('global-date-filter').value = new Date().toISOString().split('T')[0];
+                }
+                buildFilterCheckboxes();
                 renderGlobalHistory();
-            } else if (tab === 'stats') {
+            } else if (tabName === 'stats') {
                 document.getElementById('tab-btn-stats').classList.add('active');
                 document.getElementById('service-content-stats').classList.remove('hidden');
+                buildStatsMachineOptions();
                 renderStatistics();
             }
         }
 
+        async function renderOverviewMachines() {
+            const container = document.getElementById('overview-machines-container');
+            container.innerHTML = '<p style="color:#64748b; font-size:13px;">Chargement en direct...</p>';
+
+            let statuses = {};
+            try {
+                let { data } = await db.from('machines_status').select('*');
+                if (data) { data.forEach(s => statuses[s.machine_name] = s); }
+            } catch (e) {}
+
+            container.innerHTML = '';
+            MACHINES_LIST.forEach(mach => {
+                let st = statuses[mach];
+                let cardClass = "status-stop";
+                let statusText = "À l'arrêt / Disponible";
+                let ofText = "-";
+                let teamText = "-";
+
+                if (st) {
+                    if (st.status === 'play') cardClass = "status-play";
+                    else if (st.status === 'pause') cardClass = "status-pause";
+                    else if (st.status === 'conditioning') cardClass = "status-conditioning";
+                    else if (st.status === 'suspended') cardClass = "status-suspended";
+                    else if (st.status === 'waiting') cardClass = "status-pause";
+
+                    statusText = st.status_text || statusText;
+                    ofText = st.of || ofText;
+                    teamText = st.team || teamText;
+                }
+
+                container.innerHTML += `
+                    <div class="machine-card ${cardClass}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <strong style="font-size: 15px; color: #1e293b;">${mach}</strong>
+                            <span style="font-size: 11px; font-weight: bold; padding: 2px 8px; background: white; border-radius: 10px; border: 1px solid #e2e8f0;">${statusText}</span>
+                        </div>
+                        <div style="font-size: 13px; color: #475569; display: flex; justify-content: space-between; margin-top: 6px;">
+                            <span>OF : <strong>${ofText}</strong></span>
+                            <span>Équipe : <strong>${teamText}</strong></span>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function buildFilterCheckboxes() {
+            const container = document.getElementById('filter-checkboxes');
+            container.innerHTML = '';
+            MACHINES_LIST.forEach(mach => {
+                container.innerHTML += `<label><input type="checkbox" class="machine-filter-chk" value="${mach}" checked onchange="renderGlobalHistory()"> ${mach}</label>`;
+            });
+        }
+
+        async function renderGlobalHistory() {
+            const selectedDate = document.getElementById('global-date-filter').value;
+            const checkboxes = document.querySelectorAll('.machine-filter-chk');
+            let activeMachines = [];
+            checkboxes.forEach(chk => { if(chk.checked) activeMachines.push(chk.value); });
+
+            const tbody = document.getElementById('global-history-tbody');
+            tbody.innerHTML = '<tr><td colspan="7">Chargement...</td></tr>';
+
+            try {
+                let { data, error } = await db
+                    .from('production_history')
+                    .select('*')
+                    .eq('date', selectedDate)
+                    .order('id', { ascending: false });
+
+                if (error || !data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré pour cette date.</td></tr>';
+                    return;
+                }
+
+                let filtered = data.filter(r => activeMachines.includes(r.machine_name));
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun résultat pour les machines sélectionnées.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                filtered.forEach(row => {
+                    let isDiscrepancy = row.stats && row.stats.includes('Écart');
+                    let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
+
+                    tbody.innerHTML += `<tr class="${rowClass}">
+                        <td style="font-size:11px; font-weight:600; color:#3b82f6;">${row.machine_name}</td>
+                        <td><strong>${row.of}</strong></td><td style="font-size:11px;">${row.team}</td>
+                        <td>${row.filling}<br><span style="font-size:9px; color:#64748b;">${row.time_fill_start}</span></td>
+                        <td>${row.carton}<br><span style="font-size:9px; color:#64748b;">${row.time_carton_start}</span></td>
+                        <td style="color: #d97706; font-weight: 600;">${row.smed}</td>
+                        <td>${row.stats}<br><span style="font-size:10px; color:#475569;">Bout: ${row.waste_bt_qty} | Bouch: ${row.waste_cap_qty}</span></td>
+                    </tr>`;
+                });
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="7" style="color: red;">Erreur de chargement Supabase</td></tr>';
+            }
+        }
+
+        function buildStatsMachineOptions() {
+            const selectGroup = document.getElementById('stats-machines-options');
+            selectGroup.innerHTML = '';
+            MACHINES_LIST.forEach(mach => { selectGroup.innerHTML += `<option value="machine_${mach}">${mach}</option>`; });
+        }
+
         function setStatsPeriod(period, btn) {
-            currentStatsPeriod = period;
-            document.querySelectorAll('.stats-period-btns .period-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            currentStatsPeriod = period;
             renderStatistics();
+        }
+
+        function isDateInPeriod(dateStr, period) {
+            if (!dateStr) return true;
+            let recordDate = new Date(dateStr);
+            let now = new Date();
+            if (period === 'day') { return recordDate.toDateString() === now.toDateString(); }
+            else if (period === 'week') {
+                let startOfWeek = new Date(now);
+                let day = now.getDay() || 7;
+                if(day !== 1) startOfWeek.setHours(-24 * (day - 1));
+                return recordDate >= startOfWeek;
+            } else if (period === 'month') {
+                return recordDate.getMonth() === now.getMonth() && recordDate.getFullYear() === now.getFullYear();
+            } else if (period === 'year') {
+                return recordDate.getFullYear() === now.getFullYear();
+            }
+            return true;
+        }
+
+        async function renderStatistics() {
+            const perimeter = document.getElementById('stats-perimeter-select').value;
+            let records = [];
+
+            try {
+                let query = db.from('production_history').select('*');
+                if (perimeter.startsWith('machine_')) {
+                    query = query.eq('machine_name', perimeter.replace('machine_', ''));
+                }
+                let { data } = await query;
+                if (data) { records = data.filter(r => isDateInPeriod(r.date, currentStatsPeriod)); }
+            } catch (e) {}
+
+            let totalGood = 0, totalTarget = 0, totalWaste = 0, totalSmedMinutes = 0, totalRunMinutes = 0;
+            records.forEach(r => {
+                totalGood += (r.good_qty || 0);
+                totalTarget += (r.target_qty || 0);
+                totalWaste += (r.waste_bt_qty || 0) + (r.waste_cap_qty || 0);
+                totalSmedMinutes += (r.smed_value_minutes || 0);
+                totalRunMinutes += (r.run_time_minutes || 0);
+            });
+
+            let openingMinutes = currentStatsPeriod === 'day' ? getOpeningMinutesForToday() : (getOpeningMinutesForToday() * 5);
+            let usefulMinutes = totalRunMinutes;
+
+            document.getElementById('kpi-open-time').innerText = openingMinutes + " min";
+            document.getElementById('kpi-useful-time').innerText = usefulMinutes + " min";
+
+            if (records.length === 0) {
+                document.getElementById('kpi-trs').innerText = "-";
+                document.getElementById('kpi-trg').innerText = "-";
+                document.getElementById('kpi-disp').innerText = "-";
+                document.getElementById('kpi-qual').innerText = "-";
+                document.getElementById('val-loss-1').innerText = "0% (0 min)"; document.getElementById('bar-loss-1').style.width = "0%";
+                document.getElementById('val-loss-2').innerText = "0% (0 min)"; document.getElementById('bar-loss-2').style.width = "0%";
+                document.getElementById('val-smed-share').innerText = "0% (0 min)"; document.getElementById('bar-smed-share').style.width = "0%";
+                document.getElementById('val-stop-1').innerText = "0%"; document.getElementById('bar-stop-1').style.width = "0%";
+                document.getElementById('val-stop-2').innerText = "0%"; document.getElementById('bar-stop-2').style.width = "0%";
+                return;
+            }
+
+            let qualRatio = (totalGood + totalWaste) > 0 ? (totalGood / (totalGood + totalWaste)) : 1;
+            let qualVal = (qualRatio * 100).toFixed(1);
+
+            let perfRatio = totalTarget > 0 ? Math.min(totalGood / totalTarget, 1.1) : 0.95;
+            let dispRatio = 0.85;
+
+            let trsVal = (dispRatio * perfRatio * qualRatio * 100).toFixed(1);
+            let trgVal = (trsVal * 0.85).toFixed(1);
+
+            document.getElementById('kpi-trs').innerText = trsVal + "%";
+            document.getElementById('kpi-trg').innerText = trgVal + "%";
+            document.getElementById('kpi-disp').innerText = (dispRatio * 100).toFixed(1) + "%";
+            document.getElementById('kpi-qual').innerText = qualVal + "%";
+
+            let totalTimeAlloc = totalRunMinutes + totalSmedMinutes;
+            let smedSharePct = totalTimeAlloc > 0 ? Math.round((totalSmedMinutes / totalTimeAlloc) * 100) : 0;
+            
+            let loss1Min = Math.round(usefulMinutes * 0.15);
+            let loss2Min = Math.round(usefulMinutes * 0.10);
+
+            document.getElementById('val-loss-1').innerText = `15% (${loss1Min} min)`; 
+            document.getElementById('bar-loss-1').style.width = "15%";
+            
+            document.getElementById('val-loss-2').innerText = `10% (${loss2Min} min)`; 
+            document.getElementById('bar-loss-2').style.width = "10%";
+            
+            document.getElementById('val-smed-share').innerText = `${smedSharePct}% (${totalSmedMinutes} min)`;
+            document.getElementById('bar-smed-share').style.width = Math.min(smedSharePct, 100) + "%";
+            
+            document.getElementById('val-stop-1').innerText = "50%"; document.getElementById('bar-stop-1').style.width = "50%";
+            document.getElementById('val-stop-2').innerText = "30%"; document.getElementById('bar-stop-2').style.width = "30%";
+        }
+
+        function resetWorkspace() {
+            if (confirm("Voulez-vous vraiment quitter / annuler cet OF en cours ?")) { 
+                db.from('machines_status').delete().eq('machine_name', currentMachine);
+                timeStartFilling = null;
+                showScreen('screen-operator-hub'); 
+            }
         }
     </script>
 </body>
