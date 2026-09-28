@@ -111,6 +111,7 @@
         .app-btn.machine { background-color: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); }
         .app-btn.machine:hover { background-color: #059669; }
         .app-btn.machine-suspended { background-color: #8b5cf6 !important; box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3); }
+        .app-btn.machine-busy { background-color: #f59e0b !important; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3); }
         .app-btn.service-btn { background-color: #f59e0b; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3); }
         .app-btn.service-btn:hover { background-color: #d97706; }
         .app-btn.start { background-color: #10b981; font-size: 20px; padding: 18px; margin-top: 15px; }
@@ -170,7 +171,7 @@
         .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
         .history-table th, .history-table td { border: 1px solid #cbd5e1; padding: 8px 6px; text-align: center; vertical-align: middle; }
         .history-table th { background-color: #f1f5f9; color: #334155; font-weight: 600; }
-        .row-discrepancy { background-color: #fff1f2 !important; } /* Fond rosé pour les écarts */
+        .row-discrepancy { background-color: #fff1f2 !important; }
 
         .filter-panel { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 10px; margin-bottom: 12px; text-align: left; font-size: 13px; }
         .filter-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
@@ -521,7 +522,7 @@
         <div class="modal-box">
             <h3>⚙️ Paramètres & Horaires</h3>
             <div class="form-group">
-                <label>Configuration des horaires de l'atelier :</label>
+                <label>Configuration des horaires de l'atelier (Synchronisé Supabase) :</label>
                 <table class="schedule-table">
                     <thead><tr><th>Jour</th><th>Début</th><th>Fin</th><th>Repas</th><th>Pauses</th></tr></thead>
                     <tbody id="schedule-tbody"></tbody>
@@ -557,6 +558,22 @@
             { day: 'Vendredi', start: '08:30', end: '11:30', meal: '00:00', pause: '00:20' }
         ];
 
+        let atelierSchedule = JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
+
+        async function loadScheduleFromSupabase() {
+            try {
+                let { data, error } = await db.from('atelier_schedule').select('*');
+                if (!error && data && data.length > 0) {
+                    const order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+                    data.sort((a, b) => order.indexOf(a.day) - order.indexOf(b.day));
+                    atelierSchedule = data;
+                }
+            } catch (e) {
+                console.error("Erreur chargement horaires Supabase:", e);
+            }
+        }
+        loadScheduleFromSupabase();
+
         let currentOperator = "";
         let currentMachine = "";
         let currentOF = "";
@@ -577,6 +594,7 @@
         let timeStopFilling = null;
         let timeEndCarton = null;
         let lastOperatorEndTime = JSON.parse(localStorage.getItem('atelier_last_op_ends') || '{}');
+        let lastOperatorEndDate = JSON.parse(localStorage.getItem('atelier_last_op_dates') || '{}');
 
         function updateClock() {
             const now = new Date();
@@ -636,7 +654,6 @@
                     totalGood += (r.good_qty || 0);
                     totalTime += (r.run_time_minutes || 0);
 
-                    // Coloration rosée dans l'historique opérateur si écart détecté
                     let isDiscrepancy = r.stats && r.stats.includes('Écart');
                     let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
 
@@ -734,12 +751,12 @@
             return html;
         }
 
-        function renderScheduleTable() {
-            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
+        async function renderScheduleTable() {
+            await loadScheduleFromSupabase();
             const tbody = document.getElementById('schedule-tbody');
             tbody.innerHTML = '';
             
-            schedule.forEach((row, index) => {
+            atelierSchedule.forEach((row, index) => {
                 let startParts = (row.start || "08:30").split(':');
                 let endParts = (row.end || "17:30").split(':');
                 let mealParts = (row.meal || "01:00").split(':');
@@ -777,16 +794,27 @@
             });
         }
 
-        function saveScheduleSettings() {
-            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
-            schedule.forEach((row, index) => {
-                row.start = document.getElementById(`sch_start_h_${index}`).value + ':' + document.getElementById(`sch_start_m_${index}`).value;
-                row.end = document.getElementById(`sch_end_h_${index}`).value + ':' + document.getElementById(`sch_end_m_${index}`).value;
-                row.meal = document.getElementById(`sch_meal_h_${index}`).value + ':' + document.getElementById(`sch_meal_m_${index}`).value;
-                row.pause = document.getElementById(`sch_pause_h_${index}`).value + ':' + document.getElementById(`sch_pause_m_${index}`).value;
+        async function saveScheduleSettings() {
+            let newSchedule = [];
+            atelierSchedule.forEach((row, index) => {
+                let updatedRow = {
+                    day: row.day,
+                    start: document.getElementById(`sch_start_h_${index}`).value + ':' + document.getElementById(`sch_start_m_${index}`).value,
+                    end: document.getElementById(`sch_end_h_${index}`).value + ':' + document.getElementById(`sch_end_m_${index}`).value,
+                    meal: document.getElementById(`sch_meal_h_${index}`).value + ':' + document.getElementById(`sch_meal_m_${index}`).value,
+                    pause: document.getElementById(`sch_pause_h_${index}`).value + ':' + document.getElementById(`sch_pause_m_${index}`).value
+                };
+                newSchedule.push(updatedRow);
             });
-            localStorage.setItem('atelier_schedule', JSON.stringify(schedule));
-            alert("Horaires enregistrés avec succès !");
+
+            let { error } = await db.from('atelier_schedule').upsert(newSchedule);
+            if (error) {
+                alert("Erreur lors de la sauvegarde sur Supabase : " + error.message);
+                return;
+            }
+
+            atelierSchedule = newSchedule;
+            alert("Horaires enregistrés et synchronisés sur Supabase avec succès !");
             closeSettings();
             renderStatistics();
         }
@@ -798,10 +826,9 @@
         }
 
         function getOpeningMinutesForToday() {
-            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
             const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
             let todayName = daysMap[new Date().getDay()];
-            let dayConfig = schedule.find(s => s.day === todayName);
+            let dayConfig = atelierSchedule.find(s => s.day === todayName);
             if (!dayConfig) return 480;
 
             let startMin = timeToMinutes(dayConfig.start);
@@ -816,10 +843,9 @@
         }
 
         function getWorkshopStartMinutesToday() {
-            let schedule = JSON.parse(localStorage.getItem('atelier_schedule') || JSON.stringify(DEFAULT_SCHEDULE));
             const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
             let todayName = daysMap[new Date().getDay()];
-            let dayConfig = schedule.find(s => s.day === todayName);
+            let dayConfig = atelierSchedule.find(s => s.day === todayName);
             return dayConfig ? timeToMinutes(dayConfig.start) : (8 * 60 + 30);
         }
 
@@ -874,6 +900,9 @@
                 console.error("Erreur récupération statuts:", e);
             }
 
+            // On stocke globalement pour pouvoir reprendre l'état si besoin
+            window.lastLoadedMachinesStatus = machinesStatusMap;
+
             MACHINES_LIST.forEach(mach => {
                 let st = machinesStatusMap[mach];
                 let isSuspended = st && st.status === 'suspended';
@@ -886,12 +915,13 @@
                         </button>
                     `;
                 } else if (isBusy) {
+                    // NOUVEAU : Au lieu d'un bouton désactivé figé, on propose de reprendre la session directement !
                     container.innerHTML += `
                         <div style="display: flex; gap: 8px;">
-                            <button class="app-btn machine machine-disabled" style="flex: 1;" disabled>
-                                ${mach} <br><span style="font-size:11px; font-weight:normal;">🔴 ${st.status_text || 'En cours'}</span>
+                            <button class="app-btn machine machine-busy" style="flex: 1;" onclick="resumeActiveMachine('${mach}')">
+                                ${mach} <br><span style="font-size:11px; font-weight:normal;">⚠️ ${st.status_text || 'En cours'} (${st.of}) - Reprendre</span>
                             </button>
-                            <button class="app-btn" style="background: #ef4444; padding: 0 15px; font-size: 14px;" onclick="forceUnlockMachine('${mach}')" title="Débloquer si bloqué">🔓</button>
+                            <button class="app-btn" style="background: #ef4444; padding: 0 15px; font-size: 14px;" onclick="forceUnlockMachine('${mach}')" title="Forcer le déblocage">🔓</button>
                         </div>
                     `;
                 } else {
@@ -905,8 +935,89 @@
             showScreen('screen-machine');
         }
 
+        async function resumeActiveMachine(mach) {
+            let st = window.lastLoadedMachinesStatus ? window.lastLoadedMachinesStatus[mach] : null;
+            if (!st) {
+                alert("Impossible de récupérer l'état de la machine.");
+                prepareMachineSelection();
+                return;
+            }
+
+            currentMachine = mach;
+            currentOF = st.of;
+            targetQty = st.target_qty || 500;
+            initialTargetQty = st.initial_target_qty || targetQty;
+            
+            if (!currentOperator && st.team) {
+                currentOperator = st.team;
+            }
+
+            document.getElementById('running-title').innerText = currentMachine + " - " + (currentOperator || st.team);
+            let statusBox = document.getElementById('running-status');
+            let playBtn = document.getElementById('btn-play-square');
+            let pauseBtn = document.getElementById('btn-pause-square');
+            let stopBtn = document.getElementById('btn-stop-square');
+            let condPanel = document.getElementById('conditioning-panel');
+
+            if (st.status === 'play') {
+                statusBox.className = "status-play";
+                statusBox.innerHTML = `
+                    <p>OF en cours : ${currentOF}</p>
+                    <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                    <p style="margin-top: 5px; font-size: 13px;">Équipe : ${st.team}</p>
+                    <p style="margin-top: 8px; font-weight: bold; color: #065f46;">Statut : ${st.status_text || 'En Remplissage 🚀'}</p>
+                `;
+                playBtn.className = "control-square-btn btn-play btn-disabled";
+                pauseBtn.className = "control-square-btn btn-pause";
+                stopBtn.className = "control-square-btn btn-stop";
+                condPanel.classList.add('hidden');
+            } else if (st.status === 'pause') {
+                statusBox.className = "status-pause";
+                statusBox.innerHTML = `
+                    <p>OF en cours : ${currentOF}</p>
+                    <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                    <p style="margin-top: 5px; font-size: 13px;">Équipe : ${st.team}</p>
+                    <p style="margin-top: 8px; font-weight: bold; color: #b45309;">Statut : ${st.status_text || 'En Pause ⏸'}</p>
+                `;
+                playBtn.className = "control-square-btn btn-play";
+                pauseBtn.className = "control-square-btn btn-pause btn-disabled";
+                stopBtn.className = "control-square-btn btn-stop";
+                condPanel.classList.add('hidden');
+            } else if (st.status === 'conditioning') {
+                statusBox.className = "status-play";
+                statusBox.innerHTML = `
+                    <p>OF en cours : ${currentOF}</p>
+                    <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                    <p style="margin-top: 5px; font-size: 13px;">Équipe : ${st.team}</p>
+                    <p style="margin-top: 8px; font-weight: bold; color: #d97706;">Statut : En Conditionnement 📦</p>
+                `;
+                playBtn.className = "control-square-btn btn-play btn-disabled";
+                pauseBtn.className = "control-square-btn btn-pause btn-disabled";
+                stopBtn.className = "control-square-btn btn-stop btn-disabled";
+                condPanel.classList.remove('hidden');
+            } else {
+                statusBox.className = "status-waiting";
+                statusBox.innerHTML = `
+                    <p>OF en cours : ${currentOF}</p>
+                    <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
+                    <p style="margin-top: 5px; font-size: 13px;">Équipe : ${st.team}</p>
+                    <p style="margin-top: 8px; font-weight: bold; color: #475569;">Statut : En attente de démarrage ⏳</p>
+                `;
+                playBtn.className = "control-square-btn btn-play";
+                pauseBtn.className = "control-square-btn btn-pause btn-disabled";
+                stopBtn.className = "control-square-btn btn-stop btn-disabled";
+                condPanel.classList.add('hidden');
+            }
+
+            if (!timeStartFilling) {
+                timeStartFilling = new Date();
+            }
+
+            showScreen('screen-running');
+        }
+
         async function forceUnlockMachine(machName) {
-            if (confirm("Voulez-vous vraiment libérer / débloquer la machine " + machName + " ?")) {
+            if (confirm("Voulez-vous vraiment libérer / débloquer la machine " + machName + " (Attention, cela effacera l'état en cours) ?")) {
                 await db.from('machines_status').delete().eq('machine_name', machName);
                 prepareMachineSelection();
             }
@@ -1202,8 +1313,12 @@
 
             let smedMin = 0;
             let startTimeMin = (timeStartFilling || new Date()).getHours() * 60 + (timeStartFilling || new Date()).getMinutes();
+            let todayDateStr = new Date().toISOString().split('T')[0];
 
-            if (lastOperatorEndTime[currentOperator]) {
+            let lastDate = lastOperatorEndDate[currentOperator];
+            let isNewDay = !lastDate || lastDate !== todayDateStr;
+
+            if (!isNewDay && lastOperatorEndTime[currentOperator]) {
                 let lastEnd = new Date(lastOperatorEndTime[currentOperator]);
                 smedMin = Math.round(((timeStartFilling || new Date()) - lastEnd) / 60000);
             } else {
@@ -1213,13 +1328,13 @@
             if (smedMin < 0) smedMin = 0;
 
             lastOperatorEndTime[currentOperator] = timeEndCarton.toISOString();
+            lastOperatorEndDate[currentOperator] = todayDateStr;
             localStorage.setItem('atelier_last_op_ends', JSON.stringify(lastOperatorEndTime));
+            localStorage.setItem('atelier_last_op_dates', JSON.stringify(lastOperatorEndDate));
 
             let teamStr = currentOperator; 
-            let todayDateStr = new Date().toISOString().split('T')[0];
             let globalTarget = initialTargetQty > 0 ? initialTargetQty : (good + (targetQty - good));
 
-            // STATS AU FORMAT TEXTE PROPRE SANS BALISES HTML
             let statsText = `${good} / ${globalTarget}`;
             if (good < expectedRemainingQty) {
                 statsText += ` (Écart : -${expectedRemainingQty - good})`;
