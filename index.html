@@ -585,7 +585,7 @@
         let initialTargetQty = 0; 
         let isPaused = false;
         let pauseStartTime = null;
-        let currentPauseLogs = []; // Tableau pour stocker les arrêts de l'OF en cours [{motif: '...', duration: X}]
+        let currentPauseLogs = [];
         let currentStatsPeriod = 'day';
 
         let keypadTargetInputId = null;
@@ -950,7 +950,7 @@
             currentOF = st.of;
             targetQty = st.target_qty || 500;
             initialTargetQty = st.initial_target_qty || targetQty;
-            currentPauseLogs = st.pause_logs ? JSON.parse(st.pause_logs) : [];
+            currentPauseLogs = st.pause_logs ? (typeof st.pause_logs === 'string' ? JSON.parse(st.pause_logs) : st.pause_logs) : [];
             
             if (!currentOperator && st.team) {
                 currentOperator = st.team;
@@ -1050,7 +1050,7 @@
             if(data) {
                 targetQty = data.target_qty || 500; 
                 initialTargetQty = data.initial_target_qty || (targetQty + (data.produced_qty || 0));
-                currentPauseLogs = data.pause_logs ? JSON.parse(data.pause_logs) : [];
+                currentPauseLogs = data.pause_logs ? (typeof data.pause_logs === 'string' ? JSON.parse(data.pause_logs) : data.pause_logs) : [];
             } else {
                 targetQty = 500;
                 initialTargetQty = 500;
@@ -1159,7 +1159,7 @@
         async function onPlayClick() {
             if (isPaused && pauseStartTime) {
                 let pauseDurationMin = Math.round((new Date() - pauseStartTime) / 60000);
-                if (pauseDurationMin < 1) pauseDurationMin = 1; // Au moins 1 min si cliqué rapidement
+                if (pauseDurationMin < 1) pauseDurationMin = 1;
 
                 currentPauseLogs.push({
                     motif: window.currentPauseMotif || 'Pause',
@@ -1184,7 +1184,7 @@
             document.getElementById('btn-pause-square').className = "control-square-btn btn-pause";
             document.getElementById('btn-stop-square').className = "control-square-btn btn-stop";
 
-            await updateMachineStatusSupabase({ status: 'play', status_text: 'En Remplissage 🚀', pause_logs: JSON.stringify(currentPauseLogs) });
+            await updateMachineStatusSupabase({ status: 'play', status_text: 'En Remplissage 🚀' });
         }
 
         function onPauseClick() { document.getElementById('modal-pause').classList.remove('hidden'); }
@@ -1213,7 +1213,7 @@
             document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
             document.getElementById('btn-play-square').className = "control-square-btn btn-play";
             
-            await updateMachineStatusSupabase({ status: 'pause', status_text: 'Pause : ' + motif, pause_logs: JSON.stringify(currentPauseLogs) });
+            await updateMachineStatusSupabase({ status: 'pause', status_text: 'Pause : ' + motif });
         }
 
         async function onSuspendDayClick() {
@@ -1396,7 +1396,6 @@
             showScreen('screen-operator-hub');
         }
 
-        // Fonction pour afficher le détail des pauses sous forme de popup formatée
         function showPauseDetails(detailsJson) {
             if (!detailsJson) {
                 alert("Aucun détail de pause enregistré pour cet OF.");
@@ -1439,7 +1438,6 @@
                     
                     let pauseCellHtml = `${pauseMin}m`;
                     if (pauseMin > 0 && row.pause_details_json) {
-                        // Échappement propre des guillemets pour l'attribut onclick
                         let escapedJson = row.pause_details_json.replace(/"/g, '&quot;');
                         pauseCellHtml = `<a href="javascript:void(0)" onclick="showPauseDetails('${escapedJson}')" style="color: #d97706; font-weight: 600; text-decoration: underline;" title="Cliquez pour voir les motifs">${pauseMin}m 🔍</a>`;
                     }
