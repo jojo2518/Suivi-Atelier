@@ -299,7 +299,7 @@
                 <div style="overflow-x: auto; max-height: 300px;">
                     <table class="history-table">
                         <thead>
-                            <tr><th>Mach.</th><th>OF</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod / Rebuts</th></tr>
+                            <tr><th>Mach.</th><th>OF</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Pause</th><th>Prod / Rebuts</th></tr>
                         </thead>
                         <tbody id="global-history-tbody"></tbody>
                     </table>
@@ -380,8 +380,8 @@
                 <h4>📊 Historique du jour sur la machine</h4>
                 <div style="overflow-x: auto; max-height: 180px;">
                     <table class="history-table">
-                        <thead><tr><th>OF</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Prod & Rebuts</th></tr></thead>
-                        <tbody id="history-tbody"><tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF validé pour l'instant aujourd'hui.</td></tr></tbody>
+                        <thead><tr><th>OF</th><th>Équipe</th><th>Rempl.</th><th>Carton</th><th>SMED</th><th>Pause</th><th>Prod & Rebuts</th></tr></thead>
+                        <tbody id="history-tbody"><tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun OF validé pour l'instant aujourd'hui.</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -585,6 +585,7 @@
         let initialTargetQty = 0; 
         let isPaused = false;
         let pauseStartTime = null;
+        let currentPauseLogs = []; // Tableau pour stocker les arrêts de l'OF en cours [{motif: '...', duration: X}]
         let currentStatsPeriod = 'day';
 
         let keypadTargetInputId = null;
@@ -949,6 +950,7 @@
             currentOF = st.of;
             targetQty = st.target_qty || 500;
             initialTargetQty = st.initial_target_qty || targetQty;
+            currentPauseLogs = st.pause_logs ? JSON.parse(st.pause_logs) : [];
             
             if (!currentOperator && st.team) {
                 currentOperator = st.team;
@@ -1028,6 +1030,7 @@
         function selectMachine(machineName) {
             currentMachine = machineName;
             initialTargetQty = 0;
+            currentPauseLogs = [];
             document.getElementById('workspace-title').innerText = currentMachine + " (" + currentOperator + ")";
             document.getElementById('of-input').value = "MO/";
             document.getElementById('qty-input').value = "";
@@ -1041,17 +1044,18 @@
         async function resumeSuspendedMachine(machineName, ofNum, previousTeam) {
             currentMachine = machineName;
             currentOF = ofNum;
+            currentPauseLogs = [];
             
             let { data } = await db.from('machines_status').select('*').eq('machine_name', currentMachine).single();
             if(data) {
                 targetQty = data.target_qty || 500; 
                 initialTargetQty = data.initial_target_qty || (targetQty + (data.produced_qty || 0));
+                currentPauseLogs = data.pause_logs ? JSON.parse(data.pause_logs) : [];
             } else {
                 targetQty = 500;
                 initialTargetQty = 500;
             }
 
-            // CORRECTION ICI AUSSI : On récupère l'équipe active avec le binôme sélectionné si besoin
             let selectedTeamMembers = [];
             document.querySelectorAll('.team-chip.selected').forEach(chip => {
                 selectedTeamMembers.push(chip.getAttribute('data-name'));
@@ -1101,7 +1105,6 @@
 
         function toggleTeamChip(btn) { btn.classList.toggle('selected'); }
 
-        // --- CORRECTION MAJEURE ICI : Récupération de tous les membres sélectionnés (ex: Céline / Alexis) ---
         function getSelectedTeamString() {
             let selectedChips = [];
             document.querySelectorAll('.team-chip.selected').forEach(chip => {
@@ -1118,8 +1121,7 @@
             if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Veuillez saisir une quantité cible valide."); return; }
             targetQty = parseInt(qtyVal);
             initialTargetQty = targetQty;
-            
-            // On récupère l'équipe complète (binôme/trio) sélectionnée
+            currentPauseLogs = [];
             let teamStr = getSelectedTeamString();
 
             let statusData = {
@@ -1130,7 +1132,8 @@
                 team: teamStr,
                 target_qty: targetQty,
                 initial_target_qty: initialTargetQty,
-                produced_qty: 0
+                produced_qty: 0,
+                pause_logs: JSON.stringify([])
             };
 
             await db.from('machines_status').upsert(statusData);
@@ -1156,19 +1159,12 @@
         async function onPlayClick() {
             if (isPaused && pauseStartTime) {
                 let pauseDurationMin = Math.round((new Date() - pauseStartTime) / 60000);
-                let excessMin = 0;
+                if (pauseDurationMin < 1) pauseDurationMin = 1; // Au moins 1 min si cliqué rapidement
 
-                if (window.currentPauseMotif === 'Pause ☕') {
-                    if (pauseDurationMin > 10) excessMin = pauseDurationMin - 10;
-                } else if (window.currentPauseMotif === 'Pause repas 🍽️') {
-                    if (pauseDurationMin > 60) excessMin = pauseDurationMin - 60;
-                } else {
-                    excessMin = pauseDurationMin;
-                }
-
-                if (excessMin > 0) {
-                    console.log(`Dépassement de pause enregistré : +${excessMin} min.`);
-                }
+                currentPauseLogs.push({
+                    motif: window.currentPauseMotif || 'Pause',
+                    duration: pauseDurationMin
+                });
             }
 
             if(!timeStartFilling) { timeStartFilling = new Date(); }
@@ -1188,7 +1184,7 @@
             document.getElementById('btn-pause-square').className = "control-square-btn btn-pause";
             document.getElementById('btn-stop-square').className = "control-square-btn btn-stop";
 
-            await updateMachineStatusSupabase({ status: 'play', status_text: 'En Remplissage 🚀' });
+            await updateMachineStatusSupabase({ status: 'play', status_text: 'En Remplissage 🚀', pause_logs: JSON.stringify(currentPauseLogs) });
         }
 
         function onPauseClick() { document.getElementById('modal-pause').classList.remove('hidden'); }
@@ -1217,7 +1213,7 @@
             document.getElementById('btn-pause-square').className = "control-square-btn btn-pause btn-disabled";
             document.getElementById('btn-play-square').className = "control-square-btn btn-play";
             
-            await updateMachineStatusSupabase({ status: 'pause', status_text: 'Pause : ' + motif });
+            await updateMachineStatusSupabase({ status: 'pause', status_text: 'Pause : ' + motif, pause_logs: JSON.stringify(currentPauseLogs) });
         }
 
         async function onSuspendDayClick() {
@@ -1239,6 +1235,8 @@
                 let todayDateStr = new Date().toISOString().split('T')[0];
                 let teamStr = getSelectedTeamString();
 
+                let totalPauseMin = currentPauseLogs.reduce((acc, curr) => acc + curr.duration, 0);
+
                 let interimRecord = {
                     date: todayDateStr,
                     machine_name: currentMachine,
@@ -1250,6 +1248,8 @@
                     carton: "0m",
                     smed: "0m",
                     smed_value_minutes: 0,
+                    pause_total_minutes: totalPauseMin,
+                    pause_details_json: JSON.stringify(currentPauseLogs),
                     stats: `${producedSoFar} / ${initialTargetQty} (Suspendu J-1)`,
                     good_qty: producedSoFar,
                     waste_bt_qty: 0,
@@ -1268,7 +1268,8 @@
                     team: teamStr,
                     target_qty: remainingQty,
                     initial_target_qty: initialTargetQty,
-                    produced_qty: producedSoFar
+                    produced_qty: producedSoFar,
+                    pause_logs: JSON.stringify(currentPauseLogs)
                 });
 
                 if (error) {
@@ -1360,6 +1361,8 @@
                 statsText += ` (Écart : -${expectedRemainingQty - good})`;
             }
 
+            let totalPauseMin = currentPauseLogs.reduce((acc, curr) => acc + curr.duration, 0);
+
             let newRecord = {
                 date: todayDateStr,
                 machine_name: currentMachine,
@@ -1371,6 +1374,8 @@
                 carton: cartonMin + "m",
                 smed: smedMin + "m",
                 smed_value_minutes: smedMin,
+                pause_total_minutes: totalPauseMin,
+                pause_details_json: JSON.stringify(currentPauseLogs),
                 stats: statsText,
                 good_qty: good,
                 waste_bt_qty: wasteBt,
@@ -1385,9 +1390,32 @@
 
             timeStartFilling = null;
             initialTargetQty = 0;
+            currentPauseLogs = [];
             document.getElementById('modal-closing').classList.add('hidden');
             alert("OF " + currentOF + " clôturé ! Quantité enregistrée pour " + teamStr + " : " + good + " pièces.");
             showScreen('screen-operator-hub');
+        }
+
+        // Fonction pour afficher le détail des pauses sous forme de popup formatée
+        function showPauseDetails(detailsJson) {
+            if (!detailsJson) {
+                alert("Aucun détail de pause enregistré pour cet OF.");
+                return;
+            }
+            try {
+                let logs = JSON.parse(detailsJson);
+                if (!logs || logs.length === 0) {
+                    alert("Aucun arrêt enregistré.");
+                    return;
+                }
+                let msg = "⏱️ Détail des arrêts / pauses :\n\n";
+                logs.forEach((item, index) => {
+                    msg += `${index + 1}. [${item.duration} min] - ${item.motif}\n`;
+                });
+                alert(msg);
+            } catch (e) {
+                alert("Erreur lors de la lecture des détails de pause.");
+            }
         }
 
         async function renderHistory() {
@@ -1400,24 +1428,33 @@
                     .order('id', { ascending: false });
 
                 if (error || !data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré.</td></tr>';
                     return;
                 }
                 tbody.innerHTML = '';
                 data.forEach(row => {
                     let isDiscrepancy = row.stats && row.stats.includes('Écart');
                     let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
+                    let pauseMin = row.pause_total_minutes !== undefined ? row.pause_total_minutes : 0;
+                    
+                    let pauseCellHtml = `${pauseMin}m`;
+                    if (pauseMin > 0 && row.pause_details_json) {
+                        // Échappement propre des guillemets pour l'attribut onclick
+                        let escapedJson = row.pause_details_json.replace(/"/g, '&quot;');
+                        pauseCellHtml = `<a href="javascript:void(0)" onclick="showPauseDetails('${escapedJson}')" style="color: #d97706; font-weight: 600; text-decoration: underline;" title="Cliquez pour voir les motifs">${pauseMin}m 🔍</a>`;
+                    }
 
                     tbody.innerHTML += `<tr class="${rowClass}">
                         <td><strong>${row.of}</strong></td><td>${row.team}</td>
                         <td>${row.filling}<br><span style="font-size:10px; color:#64748b;">${row.time_fill_start}</span></td>
                         <td>${row.carton}<br><span style="font-size:10px; color:#64748b;">${row.time_carton_start}</span></td>
                         <td style="color: #d97706; font-weight: 600;">${row.smed}</td>
+                        <td>${pauseCellHtml}</td>
                         <td>${row.stats}<br><span style="font-size:10px; color:#475569;">Bout: ${row.waste_bt_qty} | Bouch: ${row.waste_cap_qty}</span></td>
                     </tr>`;
                 });
             } catch (e) {
-                tbody.innerHTML = '<tr><td colspan="6" style="color: red;">Erreur de connexion Supabase</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="color: red;">Erreur de connexion Supabase</td></tr>';
             }
         }
 
@@ -1425,7 +1462,8 @@
             let payload = Object.assign({
                 machine_name: currentMachine,
                 of: currentOF,
-                team: getSelectedTeamString()
+                team: getSelectedTeamString(),
+                pause_logs: JSON.stringify(currentPauseLogs)
             }, fieldsToUpdate);
             await db.from('machines_status').upsert(payload);
         }
@@ -1531,7 +1569,7 @@
             checkboxes.forEach(chk => { if(chk.checked) activeMachines.push(chk.value); });
 
             const tbody = document.getElementById('global-history-tbody');
-            tbody.innerHTML = '<tr><td colspan="7">Chargement...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8">Chargement...</td></tr>';
 
             try {
                 let { data, error } = await db
@@ -1541,13 +1579,13 @@
                     .order('id', { ascending: false });
 
                 if (error || !data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré pour cette date.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="color: #94a3b8; font-style: italic;">Aucun OF enregistré pour cette date.</td></tr>';
                     return;
                 }
 
                 let filtered = data.filter(r => activeMachines.includes(r.machine_name));
                 if (filtered.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="color: #94a3b8; font-style: italic;">Aucun résultat pour les machines sélectionnées.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="color: #94a3b8; font-style: italic;">Aucun résultat pour les machines sélectionnées.</td></tr>';
                     return;
                 }
 
@@ -1555,6 +1593,13 @@
                 filtered.forEach(row => {
                     let isDiscrepancy = row.stats && row.stats.includes('Écart');
                     let rowClass = isDiscrepancy ? 'row-discrepancy' : '';
+                    let pauseMin = row.pause_total_minutes !== undefined ? row.pause_total_minutes : 0;
+                    
+                    let pauseCellHtml = `${pauseMin}m`;
+                    if (pauseMin > 0 && row.pause_details_json) {
+                        let escapedJson = row.pause_details_json.replace(/"/g, '&quot;');
+                        pauseCellHtml = `<a href="javascript:void(0)" onclick="showPauseDetails('${escapedJson}')" style="color: #d97706; font-weight: 600; text-decoration: underline;" title="Cliquez pour voir les motifs">${pauseMin}m 🔍</a>`;
+                    }
 
                     tbody.innerHTML += `<tr class="${rowClass}">
                         <td style="font-size:11px; font-weight:600; color:#3b82f6;">${row.machine_name}</td>
@@ -1562,11 +1607,12 @@
                         <td>${row.filling}<br><span style="font-size:9px; color:#64748b;">${row.time_fill_start}</span></td>
                         <td>${row.carton}<br><span style="font-size:9px; color:#64748b;">${row.time_carton_start}</span></td>
                         <td style="color: #d97706; font-weight: 600;">${row.smed}</td>
+                        <td>${pauseCellHtml}</td>
                         <td>${row.stats}<br><span style="font-size:10px; color:#475569;">Bout: ${row.waste_bt_qty} | Bouch: ${row.waste_cap_qty}</span></td>
                     </tr>`;
                 });
             } catch (e) {
-                tbody.innerHTML = '<tr><td colspan="7" style="color: red;">Erreur de chargement Supabase</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="color: red;">Erreur de chargement Supabase</td></tr>';
             }
         }
 
