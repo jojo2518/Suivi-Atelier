@@ -495,6 +495,7 @@
         </div>
     </div>
 
+    <!-- MODALE CLÔTURE MISE À JOUR AVEC ZONE DE TEXTE (REMARQUE) -->
     <div id="modal-closing" class="modal-overlay hidden">
         <div class="modal-box">
             <h3>Bilan de Fin d'OF</h3>
@@ -513,6 +514,10 @@
                     🔘 Rebuts bouchons :
                 </label>
                 <input type="text" id="closing-waste-cap" class="app-input" value="0" readonly onclick="openKeypad('closing-waste-cap', false)" style="cursor: pointer; font-weight: bold;">
+            </div>
+            <div class="form-group">
+                <label for="closing-remark">💬 Remarques / Observations :</label>
+                <textarea id="closing-remark" class="app-input" placeholder="Ex: Problème d'étiquetage, changement de bobine..." style="resize: vertical; min-height: 80px;"></textarea>
             </div>
             <button class="app-btn machine" style="width: 100%; margin-top: 10px;" onclick="validateAndCloseOF()">Enregistrer & Clôturer</button>
         </div>
@@ -900,7 +905,6 @@
                 console.error("Erreur récupération statuts:", e);
             }
 
-            // On stocke globalement pour pouvoir reprendre l'état si besoin
             window.lastLoadedMachinesStatus = machinesStatusMap;
 
             MACHINES_LIST.forEach(mach => {
@@ -915,7 +919,6 @@
                         </button>
                     `;
                 } else if (isBusy) {
-                    // NOUVEAU : Au lieu d'un bouton désactivé figé, on propose de reprendre la session directement !
                     container.innerHTML += `
                         <div style="display: flex; gap: 8px;">
                             <button class="app-btn machine machine-busy" style="flex: 1;" onclick="resumeActiveMachine('${mach}')">
@@ -1092,10 +1095,6 @@
         }
 
         function toggleTeamChip(btn) { btn.classList.toggle('selected'); }
-
-        function getSelectedTeamString() {
-            return currentOperator || "Atelier";
-        }
 
         async function startProduction() {
             const qtyVal = document.getElementById('qty-input').value.trim();
@@ -1289,12 +1288,14 @@
             } catch (e) {}
 
             document.getElementById('closing-good').value = qteRealisee;
+            document.getElementById('closing-remark').value = ""; // Réinitialiser le champ remarque à l'ouverture
             document.getElementById('modal-closing').classList.add('hidden'); 
             document.getElementById('modal-closing').classList.remove('hidden');
         }
 
         async function validateAndCloseOF() {
             const good = parseInt(document.getElementById('closing-good').value) || 0;
+            const remarkText = document.getElementById('closing-remark').value.trim(); // Récupération de la remarque
             
             if (good < expectedRemainingQty) {
                 let diff = expectedRemainingQty - good;
@@ -1356,7 +1357,8 @@
                 waste_bt_qty: wasteBt,
                 waste_cap_qty: wasteCap,
                 target_qty: globalTarget,
-                run_time_minutes: fillingMin + cartonMin
+                run_time_minutes: fillingMin + cartonMin,
+                remarque: remarkText // Ajout de la colonne remarque pour Supabase
             };
 
             await db.from('production_history').insert([newRecord]);
@@ -1431,7 +1433,6 @@
 
                 serviceRealtimeChannel = db.channel('public:machines_status')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'machines_status' }, (payload) => {
-                        console.log('Changement détecté en direct sur les machines !', payload);
                         renderOverviewMachines();
                     })
                     .subscribe();
