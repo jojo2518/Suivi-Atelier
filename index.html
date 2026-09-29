@@ -1456,11 +1456,15 @@
             }
         }
 
+        // CORRECTION DE LA FONCTION DE MISE À JOUR EN DIRECT (incluant toutes les propriétés requises par la table machines_status)
         async function updateMachineStatusSupabase(fieldsToUpdate) {
             let payload = Object.assign({
                 machine_name: currentMachine,
                 of: currentOF,
                 team: getSelectedTeamString(),
+                target_qty: targetQty,
+                initial_target_qty: initialTargetQty,
+                produced_qty: 0,
                 pause_logs: JSON.stringify(currentPauseLogs)
             }, fieldsToUpdate);
             await db.from('machines_status').upsert(payload);
