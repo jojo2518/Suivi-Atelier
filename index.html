@@ -495,7 +495,6 @@
         </div>
     </div>
 
-    <!-- MODALE CLÔTURE MISE À JOUR AVEC ZONE DE TEXTE (REMARQUE) -->
     <div id="modal-closing" class="modal-overlay hidden">
         <div class="modal-box">
             <h3>Bilan de Fin d'OF</h3>
@@ -905,7 +904,6 @@
                 console.error("Erreur récupération statuts:", e);
             }
 
-            // On stocke globalement pour pouvoir reprendre l'état si besoin
             window.lastLoadedMachinesStatus = machinesStatusMap;
 
             MACHINES_LIST.forEach(mach => {
@@ -920,7 +918,6 @@
                         </button>
                     `;
                 } else if (isBusy) {
-                    // NOUVEAU : Au lieu d'un bouton désactivé figé, on propose de reprendre la session directement !
                     container.innerHTML += `
                         <div style="display: flex; gap: 8px;">
                             <button class="app-btn machine machine-busy" style="flex: 1;" onclick="resumeActiveMachine('${mach}')">
@@ -1054,7 +1051,13 @@
                 initialTargetQty = 500;
             }
 
-            let newTeamStr = currentOperator;
+            // CORRECTION ICI AUSSI : On récupère l'équipe active avec le binôme sélectionné si besoin
+            let selectedTeamMembers = [];
+            document.querySelectorAll('.team-chip.selected').forEach(chip => {
+                selectedTeamMembers.push(chip.getAttribute('data-name'));
+            });
+            let newTeamStr = selectedTeamMembers.length > 0 ? selectedTeamMembers.join(' / ') : currentOperator;
+
             await db.from('machines_status').update({ team: newTeamStr, status: 'waiting' }).eq('machine_name', currentMachine);
 
             alert(`Bonjour ${currentOperator} !\nReprise de l'OF en cours (${currentOF}) entamé par ${previousTeam || 'la veille'}.\nIl reste ${targetQty} pièces à produire sur les ${initialTargetQty} initiales.\n\nCliquez sur OK pour lancer la production.`);
@@ -1098,7 +1101,15 @@
 
         function toggleTeamChip(btn) { btn.classList.toggle('selected'); }
 
+        // --- CORRECTION MAJEURE ICI : Récupération de tous les membres sélectionnés (ex: Céline / Alexis) ---
         function getSelectedTeamString() {
+            let selectedChips = [];
+            document.querySelectorAll('.team-chip.selected').forEach(chip => {
+                selectedChips.push(chip.getAttribute('data-name'));
+            });
+            if (selectedChips.length > 0) {
+                return selectedChips.join(' / ');
+            }
             return currentOperator || "Atelier";
         }
 
@@ -1107,7 +1118,9 @@
             if (qtyVal === "" || parseInt(qtyVal) <= 0) { alert("Veuillez saisir une quantité cible valide."); return; }
             targetQty = parseInt(qtyVal);
             initialTargetQty = targetQty;
-            let teamStr = currentOperator;
+            
+            // On récupère l'équipe complète (binôme/trio) sélectionnée
+            let teamStr = getSelectedTeamString();
 
             let statusData = {
                 machine_name: currentMachine,
@@ -1167,7 +1180,7 @@
             statusBox.innerHTML = `
                 <p>OF en cours : ${currentOF}</p>
                 <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
-                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${currentOperator}</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${getSelectedTeamString()}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #065f46;">Statut : En Remplissage 🚀</p>
             `;
 
@@ -1197,7 +1210,7 @@
             statusBox.innerHTML = `
                 <p>OF en cours : ${currentOF}</p>
                 <p style="margin-top: 5px;">Objectif : ${targetQty} pièces</p>
-                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${currentOperator}</p>
+                <p style="margin-top: 5px; font-size: 13px;">Équipe : ${getSelectedTeamString()}</p>
                 <p style="margin-top: 8px; font-weight: bold; color: #b45309;">Statut : Pause - ${motif} ⏸</p>
             `;
 
@@ -1224,7 +1237,7 @@
 
                 let fillingMin = timeStartFilling ? Math.round((new Date() - timeStartFilling) / 60000) : 30;
                 let todayDateStr = new Date().toISOString().split('T')[0];
-                let teamStr = currentOperator;
+                let teamStr = getSelectedTeamString();
 
                 let interimRecord = {
                     date: todayDateStr,
@@ -1294,14 +1307,14 @@
             } catch (e) {}
 
             document.getElementById('closing-good').value = qteRealisee;
-            document.getElementById('closing-remark').value = ""; // Réinitialiser le champ remarque à l'ouverture
+            document.getElementById('closing-remark').value = ""; 
             document.getElementById('modal-closing').classList.add('hidden'); 
             document.getElementById('modal-closing').classList.remove('hidden');
         }
 
         async function validateAndCloseOF() {
             const good = parseInt(document.getElementById('closing-good').value) || 0;
-            const remarkText = document.getElementById('closing-remark').value.trim(); // Récupération de la remarque
+            const remarkText = document.getElementById('closing-remark').value.trim(); 
             
             if (good < expectedRemainingQty) {
                 let diff = expectedRemainingQty - good;
@@ -1339,7 +1352,7 @@
             localStorage.setItem('atelier_last_op_ends', JSON.stringify(lastOperatorEndTime));
             localStorage.setItem('atelier_last_op_dates', JSON.stringify(lastOperatorEndDate));
 
-            let teamStr = currentOperator; 
+            let teamStr = getSelectedTeamString(); 
             let globalTarget = initialTargetQty > 0 ? initialTargetQty : (good + (targetQty - good));
 
             let statsText = `${good} / ${globalTarget}`;
@@ -1364,7 +1377,7 @@
                 waste_cap_qty: wasteCap,
                 target_qty: globalTarget,
                 run_time_minutes: fillingMin + cartonMin,
-                remarque: remarkText // Ajout de la colonne remarque pour Supabase
+                remarque: remarkText 
             };
 
             await db.from('production_history').insert([newRecord]);
@@ -1412,7 +1425,7 @@
             let payload = Object.assign({
                 machine_name: currentMachine,
                 of: currentOF,
-                team: currentOperator
+                team: getSelectedTeamString()
             }, fieldsToUpdate);
             await db.from('machines_status').upsert(payload);
         }
@@ -1439,7 +1452,6 @@
 
                 serviceRealtimeChannel = db.channel('public:machines_status')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'machines_status' }, (payload) => {
-                        console.log('Changement détecté en direct sur les machines !', payload);
                         renderOverviewMachines();
                     })
                     .subscribe();
