@@ -905,6 +905,7 @@
                 console.error("Erreur récupération statuts:", e);
             }
 
+            // On stocke globalement pour pouvoir reprendre l'état si besoin
             window.lastLoadedMachinesStatus = machinesStatusMap;
 
             MACHINES_LIST.forEach(mach => {
@@ -919,6 +920,7 @@
                         </button>
                     `;
                 } else if (isBusy) {
+                    // NOUVEAU : Au lieu d'un bouton désactivé figé, on propose de reprendre la session directement !
                     container.innerHTML += `
                         <div style="display: flex; gap: 8px;">
                             <button class="app-btn machine machine-busy" style="flex: 1;" onclick="resumeActiveMachine('${mach}')">
@@ -1095,6 +1097,10 @@
         }
 
         function toggleTeamChip(btn) { btn.classList.toggle('selected'); }
+
+        function getSelectedTeamString() {
+            return currentOperator || "Atelier";
+        }
 
         async function startProduction() {
             const qtyVal = document.getElementById('qty-input').value.trim();
@@ -1433,6 +1439,7 @@
 
                 serviceRealtimeChannel = db.channel('public:machines_status')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'machines_status' }, (payload) => {
+                        console.log('Changement détecté en direct sur les machines !', payload);
                         renderOverviewMachines();
                     })
                     .subscribe();
