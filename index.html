@@ -1161,8 +1161,27 @@
                 let pauseDurationMin = Math.round((new Date() - pauseStartTime) / 60000);
                 if (pauseDurationMin < 1) pauseDurationMin = 1;
 
+                let motif = window.currentPauseMotif || 'Pause';
+                let allowedDuration = 0;
+
+                // Application de la règle des seuils pause café (10 min) et repas (60 min)
+                if (motif.includes('Pause ☕')) {
+                    allowedDuration = 10;
+                } else if (motif.includes('Pause repas')) {
+                    allowedDuration = 60;
+                }
+
+                if (allowedDuration > 0) {
+                    if (pauseDurationMin > allowedDuration) {
+                        let excess = pauseDurationMin - allowedDuration;
+                        motif = `${motif} (Dépassement : +${excess} min)`;
+                    } else {
+                        motif = `${motif} (Dans les temps)`;
+                    }
+                }
+
                 currentPauseLogs.push({
-                    motif: window.currentPauseMotif || 'Pause',
+                    motif: motif,
                     duration: pauseDurationMin
                 });
             }
@@ -1456,7 +1475,6 @@
             }
         }
 
-        // CORRECTION DE LA FONCTION DE MISE À JOUR EN DIRECT (incluant toutes les propriétés requises par la table machines_status)
         async function updateMachineStatusSupabase(fieldsToUpdate) {
             let payload = Object.assign({
                 machine_name: currentMachine,
