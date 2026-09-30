@@ -1164,7 +1164,6 @@
                 let motif = window.currentPauseMotif || 'Pause';
                 let allowedDuration = 0;
 
-                // Application de la règle des seuils pause café (10 min) et repas (60 min)
                 if (motif.includes('Pause ☕')) {
                     allowedDuration = 10;
                 } else if (motif.includes('Pause repas')) {
