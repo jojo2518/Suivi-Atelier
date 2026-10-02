@@ -263,49 +263,8 @@
             <div class="btn-grid" style="margin-top: 25px;">
                 <button class="app-btn machine" onclick="prepareMachineSelection()">🏭 Lancer / Gérer les Machines</button>
                 <button class="app-btn" style="background: #8b5cf6;" onclick="openOperatorStats()">📊 Mes Statistiques / Bilan</button>
-                <button class="app-btn" style="background: #06b6d4;" onclick="open5SScreen()">🧹 Contrôle & Audit 5S</button>
             </div>
             <span class="back-link" onclick="showScreen('screen-operator')">Changer d'opérateur</span>
-        </div>
-
-        <!-- ÉCRAN 2.8 : AUDIT 5S OPÉRATEUR -->
-        <div id="screen-operator-5s" class="hidden">
-            <h2>🧹 Audit & Check 5S</h2>
-            <p class="hint">Validation des règles 5S du poste de travail</p>
-            <div class="stats-container" style="text-align: left; margin-top: 15px;">
-                <div class="form-group">
-                    <label>Sélectionnez la machine / zone :</label>
-                    <select id="5s-machine-select" class="app-input" style="padding: 10px; font-size: 14px;">
-                        <option value="E-fill SW 10ml 1">E-fill SW 10ml 1</option>
-                        <option value="E-fill SW 10ml 2">E-fill SW 10ml 2</option>
-                        <option value="E-fill 50/30ml">E-fill 50/30ml</option>
-                        <option value="K-net">K-net</option>
-                    </select>
-                </div>
-                <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 10px; margin-bottom: 15px; font-size: 13px;">
-                    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
-                        <input type="checkbox" id="chk-5s-1" style="transform: scale(1.2);"> 1. **Seiri (Trier)** : Éliminer l'inutile du poste.
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
-                        <input type="checkbox" id="chk-5s-2" style="transform: scale(1.2);"> 2. **Seiton (Ranger)** : Une place pour chaque chose, chaque chose à sa place.
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
-                        <input type="checkbox" id="chk-5s-3" style="transform: scale(1.2);"> 3. **Seiso (Nettoyer)** : Nettoyer la machine et l'environnement de travail.
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
-                        <input type="checkbox" id="chk-5s-4" style="transform: scale(1.2);"> 4. **Seiketsu (Standardiser)** : Maintenir la propreté et l'ordre.
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" id="chk-5s-5" style="transform: scale(1.2);"> 5. **Shitsuke (Respecter)** : Respecter les règles et progresser.
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label>Remarques / Anomalies 5S :</label>
-                    <textarea id="5s-remarks" class="app-input" placeholder="Ex: Rangement bacs à déchets OK, zone propre..." style="resize: vertical; min-height: 60px;"></textarea>
-                </div>
-                <button class="app-btn machine" style="width: 100%; margin-top: 5px;" onclick="submit5SAudit()">Valider & Enregistrer le 5S 📝</button>
-            </div>
-            <span class="back-link" onclick="showScreen('screen-operator-hub')" style="margin-top: 15px;">Retour</span>
         </div>
 
         <!-- ÉCRAN 3 : MACHINE -->
@@ -650,7 +609,7 @@
         updateClock();
 
         function showScreen(screenId) {
-            ['screen-welcome', 'screen-operator', 'screen-operator-hub', 'screen-operator-5s', 'screen-machine', 'screen-service', 'screen-workspace', 'screen-running', 'screen-operator-stats'].forEach(id => {
+            ['screen-welcome', 'screen-operator', 'screen-operator-hub', 'screen-machine', 'screen-service', 'screen-workspace', 'screen-running', 'screen-operator-stats'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(screenId).classList.remove('hidden');
@@ -669,63 +628,6 @@
             document.getElementById('op-stats-date').value = new Date().toISOString().split('T')[0];
             renderOperatorStats();
             showScreen('screen-operator-stats');
-        }
-
-        function open5SScreen() {
-            document.getElementById('chk-5s-1').checked = false;
-            document.getElementById('chk-5s-2').checked = false;
-            document.getElementById('chk-5s-3').checked = false;
-            document.getElementById('chk-5s-4').checked = false;
-            document.getElementById('chk-5s-5').checked = false;
-            document.getElementById('5s-remarks').value = '';
-            showScreen('screen-operator-5s');
-        }
-
-        async function submit5SAudit() {
-            const c1 = document.getElementById('chk-5s-1').checked;
-            const c2 = document.getElementById('chk-5s-2').checked;
-            const c3 = document.getElementById('chk-5s-3').checked;
-            const c4 = document.getElementById('chk-5s-4').checked;
-            const c5 = document.getElementById('chk-5s-5').checked;
-            const remarks = document.getElementById('5s-remarks').value.trim();
-            const machine = document.getElementById('5s-machine-select').value;
-
-            const score = [c1, c2, c3, c4, c5].filter(Boolean).length;
-            const todayDateStr = new Date().toISOString().split('T')[0];
-
-            let auditRecord = {
-                date: todayDateStr,
-                machine_name: machine,
-                of: '5S-AUDIT',
-                team: currentOperator,
-                time_fill_start: new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
-                time_carton_start: new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
-                filling: '0m',
-                carton: '0m',
-                smed: '0m',
-                smed_value_minutes: 0,
-                pause_total_minutes: 0,
-                pause_details_json: JSON.stringify([]),
-                stats: `Score 5S: ${score}/5`,
-                good_qty: 0,
-                waste_bt_qty: 0,
-                waste_cap_qty: 0,
-                target_qty: 0,
-                run_time_minutes: 0,
-                remarque: `Audit 5S (${score}/5) - ${remarks}`
-            };
-
-            try {
-                let { error } = await db.from('production_history').insert([auditRecord]);
-                if (error) {
-                    alert("Erreur lors de l'enregistrement Supabase : " + error.message);
-                    return;
-                }
-                alert(`Audit 5S enregistré avec succès ! Score : ${score}/5`);
-                showScreen('screen-operator-hub');
-            } catch (e) {
-                alert("Erreur de connexion.");
-            }
         }
 
         async function renderOperatorStats() {
