@@ -277,7 +277,7 @@
 
         <!-- ÉCRAN 3.5 : ESPACE SERVICE (ADMIN) -->
         <div id="screen-service" class="hidden">
-            <h2>⚙️️ Espace Service 🛠️</h2>
+            <h2>⚙ Espace Service 🛠️</h2>
             <div class="service-tabs">
                 <button class="service-tab-btn active" id="tab-btn-overview" onclick="switchServiceTab('overview')">Vue d'ensemble</button>
                 <button class="service-tab-btn" id="tab-btn-history" onclick="switchServiceTab('history')">Historique</button>
@@ -733,7 +733,7 @@
             document.getElementById('modal-pin').classList.add('hidden');
         }
 
-        function promptAdminPasswordPin() { openPinModal('service', 'Code PIN - Accès Service 🛠️️'); }
+        function promptAdminPasswordPin() { openPinModal('service', 'Code PIN - Accès Service 🛠'); }
         function openSettingsPinPrompt() { openPinModal('settings', 'Code PIN - Paramètres ⚙️'); }
         function confirmResetDatabasePinPrompt() { openPinModal('reset', 'Sécurité : PIN pour effacer'); }
         function closeSettings() { document.getElementById('modal-settings').classList.add('hidden'); }
@@ -1721,30 +1721,30 @@
             document.getElementById('kpi-disp').innerText = (dispRatio * 100).toFixed(1) + "%";
             document.getElementById('kpi-qual').innerText = qualVal + "%";
 
-            let totalTimeAlloc = totalRunMinutes + totalSmedMinutes;
-            let smedSharePct = totalTimeAlloc > 0 ? Math.round((totalSmedMinutes / totalTimeAlloc) * 100) : 0;
-            
-            let loss1Min = Math.round(usefulMinutes * 0.15);
-            let loss2Min = Math.round(usefulMinutes * 0.10);
+            let totalLossMin = (openingMinutes - usefulMinutes > 0) ? (openingMinutes - usefulMinutes) : 0;
+            let smedShare = totalLossMin > 0 ? Math.round((totalSmedMinutes / totalLossMin) * 100) : 0;
 
-            document.getElementById('val-loss-1').innerText = `15% (${loss1Min} min)`; 
-            document.getElementById('bar-loss-1').style.width = "15%";
-            
-            document.getElementById('val-loss-2').innerText = `10% (${loss2Min} min)`; 
-            document.getElementById('bar-loss-2').style.width = "10%";
-            
-            document.getElementById('val-smed-share').innerText = `${smedSharePct}% (${totalSmedMinutes} min)`;
-            document.getElementById('bar-smed-share').style.width = Math.min(smedSharePct, 100) + "%";
-            
-            document.getElementById('val-stop-1').innerText = "50%"; document.getElementById('bar-stop-1').style.width = "50%";
-            document.getElementById('val-stop-2').innerText = "30%"; document.getElementById('bar-stop-2').style.width = "30%";
+            document.getElementById('val-loss-1').innerText = `${Math.round(totalLossMin * 0.4)} min`;
+            document.getElementById('bar-loss-1').style.width = "40%";
+            document.getElementById('val-loss-2').innerText = `${Math.round(totalLossMin * 0.3)} min`;
+            document.getElementById('bar-loss-2').style.width = "30%";
+            document.getElementById('val-smed-share').innerText = `${smedShare}% (${totalSmedMinutes} min)`;
+            document.getElementById('bar-smed-share').style.width = `${Math.min(smedShare, 100)}%`;
+
+            document.getElementById('val-stop-1').innerText = "45%";
+            document.getElementById('bar-stop-1').style.width = "45%";
+            document.getElementById('val-stop-2').innerText = "25%";
+            document.getElementById('bar-stop-2').style.width = "25%";
         }
 
-        function resetWorkspace() {
-            if (confirm("Voulez-vous vraiment quitter / annuler cet OF en cours ?")) { 
-                db.from('machines_status').delete().eq('machine_name', currentMachine);
+        async function resetWorkspace() {
+            if (confirm("Voulez-vous vraiment quitter / annuler cet OF en cours ?")) {
+                await db.from('machines_status').delete().eq('machine_name', currentMachine);
+                currentOF = "";
+                targetQty = 0;
+                initialTargetQty = 0;
                 timeStartFilling = null;
-                showScreen('screen-operator-hub'); 
+                showScreen('screen-machine');
             }
         }
     </script>
